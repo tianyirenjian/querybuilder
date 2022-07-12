@@ -1,6 +1,6 @@
-package com.tianyisoft.querybuilder.grammar
+package com.tianyisoft.database.grammar
 
-import com.tianyisoft.querybuilder.Builder
+import com.tianyisoft.database.Builder
 
 class MysqlGrammar: Grammar() {
     public override val operators = listOf<String>("sounds like")

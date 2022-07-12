@@ -1,3 +1,3 @@
-package com.tianyisoft.querybuilder
+package com.tianyisoft.database
 
 data class Expression(val value: Any?)

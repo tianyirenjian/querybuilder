@@ -1,6 +1,6 @@
-package com.tianyisoft.querybuilder.processor
+package com.tianyisoft.database.processor
 
-import com.tianyisoft.querybuilder.Builder
+import com.tianyisoft.database.Builder
 
 open class Processor {
     open fun processSelect(query: Builder, results: List<Any>): List<Any> {

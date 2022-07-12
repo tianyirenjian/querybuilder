@@ -1,4 +1,4 @@
-package com.tianyisoft.querybuilder.util
+package com.tianyisoft.database.util
 
 import kotlin.math.ceil
 

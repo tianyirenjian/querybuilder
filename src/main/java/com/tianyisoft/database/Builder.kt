@@ -1,11 +1,11 @@
-package com.tianyisoft.querybuilder
+package com.tianyisoft.database
 
-import com.tianyisoft.querybuilder.exceptions.InvalidArgumentException
-import com.tianyisoft.querybuilder.grammar.Grammar
-import com.tianyisoft.querybuilder.grammar.MysqlGrammar
-import com.tianyisoft.querybuilder.processor.MySqlProcessor
-import com.tianyisoft.querybuilder.processor.Processor
-import com.tianyisoft.querybuilder.util.*
+import com.tianyisoft.database.exceptions.InvalidArgumentException
+import com.tianyisoft.database.grammar.Grammar
+import com.tianyisoft.database.grammar.MysqlGrammar
+import com.tianyisoft.database.processor.MySqlProcessor
+import com.tianyisoft.database.processor.Processor
+import com.tianyisoft.database.util.*
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.support.GeneratedKeyHolder

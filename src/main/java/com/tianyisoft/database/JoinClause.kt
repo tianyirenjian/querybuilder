@@ -1,7 +1,7 @@
-package com.tianyisoft.querybuilder
+package com.tianyisoft.database
 
-import com.tianyisoft.querybuilder.grammar.Grammar
-import com.tianyisoft.querybuilder.processor.Processor
+import com.tianyisoft.database.grammar.Grammar
+import com.tianyisoft.database.processor.Processor
 import org.springframework.jdbc.core.JdbcTemplate
 
 class JoinClause(): Builder() {

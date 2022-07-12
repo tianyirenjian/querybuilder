@@ -1,4 +1,4 @@
-package com.tianyisoft.querybuilder.exceptions
+package com.tianyisoft.database.exceptions
 
 class InvalidArgumentException(override val message: String): Exception() {
 }

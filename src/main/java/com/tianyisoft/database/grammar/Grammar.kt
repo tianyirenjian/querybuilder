@@ -1,11 +1,11 @@
-package com.tianyisoft.querybuilder.grammar
+package com.tianyisoft.database.grammar
 
-import com.tianyisoft.querybuilder.Builder
-import com.tianyisoft.querybuilder.Expression
-import com.tianyisoft.querybuilder.JoinClause
-import com.tianyisoft.querybuilder.util.empty
-import com.tianyisoft.querybuilder.util.flatten
-import com.tianyisoft.querybuilder.util.readInstanceProperty
+import com.tianyisoft.database.Builder
+import com.tianyisoft.database.Expression
+import com.tianyisoft.database.JoinClause
+import com.tianyisoft.database.util.empty
+import com.tianyisoft.database.util.flatten
+import com.tianyisoft.database.util.readInstanceProperty
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.jvm.isAccessible
 

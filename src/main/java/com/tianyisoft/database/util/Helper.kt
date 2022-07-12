@@ -1,4 +1,4 @@
-package com.tianyisoft.querybuilder.util
+package com.tianyisoft.database.util
 
 import java.text.SimpleDateFormat
 import java.util.*
