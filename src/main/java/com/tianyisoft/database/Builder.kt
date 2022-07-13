@@ -56,21 +56,6 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun setJdbcTemplate(jdbcTemplate: JdbcTemplate): Builder {
-        this.jdbcTemplate = jdbcTemplate
-        return this
-    }
-
-    fun setGrammar(grammar: Grammar): Builder {
-        this.grammar = grammar
-        return this
-    }
-
-    fun setProcessor(processor: Processor): Builder {
-        this.processor = processor
-        return this
-    }
-
     fun select(vararg fields: Any): Builder {
         columns = if (fields.isEmpty()) mutableListOf("*") else fields.toMutableList()
         bindings["select"] = mutableListOf()
@@ -433,7 +418,11 @@ open class Builder: Cloneable {
     }
 
     open fun newQuery(): Builder {
-        return Builder().setJdbcTemplate(jdbcTemplate!!).setGrammar(grammar).setProcessor(processor)
+        val builder =  Builder()
+        builder.jdbcTemplate = jdbcTemplate
+        builder.grammar = grammar
+        builder.processor = processor
+        return builder
     }
 
     protected fun addMapOfWheres(column: Map<String, Any?>, boolean: String, method: String = "where"): Builder {

@@ -18,7 +18,9 @@ class JoinClause(): Builder() {
         this.parentGrammar = parentQuery.grammar
         this.parentProcessor = parentQuery.processor
 
-        this.setJdbcTemplate(parentJdbcTemplate).setGrammar(parentGrammar).setProcessor(parentProcessor)
+        this.jdbcTemplate = parentJdbcTemplate
+        this.grammar = parentGrammar
+        this.processor = parentProcessor
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -40,6 +42,10 @@ class JoinClause(): Builder() {
     }
 
     protected fun newParentQuery(): Builder {
-        return Builder().setJdbcTemplate(parentJdbcTemplate).setGrammar(parentGrammar).setProcessor(parentProcessor)
+        val builder = Builder()
+        builder.jdbcTemplate = parentJdbcTemplate
+        builder.grammar = parentGrammar
+        builder.processor = parentProcessor
+        return builder
     }
 }
