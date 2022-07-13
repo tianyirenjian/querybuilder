@@ -116,7 +116,7 @@ open class Builder: Cloneable {
 
     protected fun parseSub(query: Any): Pair<String, List<Any?>> {
         return when (query) {
-            is Builder -> Pair(query.toSql(), query.getBindings())
+            is Builder -> Pair(query.toSql(), query.getFlattenBindings())
             is String -> Pair(query, listOf())
             else -> throw InvalidArgumentException("A subquery must be a query builder instance, a Closure, or a string.")
         }
@@ -129,14 +129,14 @@ open class Builder: Cloneable {
             firstOrClosure as Function1<JoinClause, Unit>
             firstOrClosure(join)
             joins.add(join)
-            addBinding(join.getBindings(), "join")
+            addBinding(join.getFlattenBindings(), "join")
         } else {
             if (where) {
                 joins.add(join.where(firstOrClosure, operator!!, second!!) as JoinClause)
             } else {
                 joins.add(join.on(firstOrClosure, operator, second))
             }
-            addBinding(join.getBindings(), "join")
+            addBinding(join.getFlattenBindings(), "join")
         }
         return this
     }
@@ -389,7 +389,7 @@ open class Builder: Cloneable {
             "query" to query,
             "boolean" to boolean
         ))
-        addBinding(query.getBindings(), "where")
+        addBinding(query.getFlattenBindings(), "where")
         return this
     }
 
@@ -409,7 +409,7 @@ open class Builder: Cloneable {
             "query" to query,
             "boolean" to boolean
         ))
-        addBinding(query.getBindings())
+        addBinding(query.getFlattenBindings())
         return this
     }
 
@@ -645,13 +645,13 @@ open class Builder: Cloneable {
             "query" to newQuery,
             "all" to all
         ))
-        addBinding(newQuery.getBindings(), "union")
+        addBinding(newQuery.getFlattenBindings(), "union")
         return this
     }
 
     fun unionAll(query: Builder) = union(query, true)
 
-    fun getBindings(): List<Any?> {
+    fun getFlattenBindings(): List<Any?> {
         return flatten(bindings)
     }
 
@@ -754,7 +754,7 @@ open class Builder: Cloneable {
 
     protected fun <T : Any> runSelect(rowMapper: RowMapper<T>? = null): List<Any> {
         val sql = toSql()
-        val bindings = getBindings()
+        val bindings = getFlattenBindings()
         printDebugInfo(sql, bindings)
         if (rowMapper == null) {
             return jdbcTemplate!!.queryForList(sql, *bindings.toTypedArray())
@@ -764,9 +764,9 @@ open class Builder: Cloneable {
 
     fun exists(): Boolean {
         val sql = grammar.compileExists(this)
-        val bindings = getBindings()
+        val bindings = getFlattenBindings()
         printDebugInfo(sql, bindings)
-        return jdbcTemplate!!.queryForMap(sql, *getBindings().toTypedArray())["exists"].toBool()
+        return jdbcTemplate!!.queryForMap(sql, *bindings.toTypedArray())["exists"].toBool()
     }
 
     fun notExists(): Boolean = !exists()
@@ -971,7 +971,7 @@ open class Builder: Cloneable {
 
     fun dump(): Builder {
         println(this.toSql())
-        println(this.getBindings())
+        println(this.getFlattenBindings())
         return this
     }
     fun insert(values: Map<String, Any?>): Int {
