@@ -995,7 +995,14 @@ open class Builder: Cloneable {
         return keyHolder.key?.toLong() ?: 0
     }
 
-    fun insert(values: List<Map<String, Any?>>): Int {
+    fun insert(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+        if (batch != 0) {
+            var effected = 0
+            values.chunked(batch).forEach {
+                 effected += insert(it, 0)
+            }
+            return effected
+        }
         val sql = grammar.compileInsert(this, values)
         printDebugInfo(sql, values)
         return insert(sql, values)
