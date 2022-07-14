@@ -980,15 +980,14 @@ open class Builder: Cloneable {
 
     fun insertGetId(values: Map<String, Any?>, sequence: String = "id"): Long {
         val sql = grammar.compileInsertGetId(this, values, sequence)
-        printDebugInfo(sql, values)
+        val parameters = values.filter { it.value !is Expression }.keys.sorted().map { values[it] }
+        printDebugInfo(sql, parameters)
         val keyHolder = GeneratedKeyHolder()
 
         jdbcTemplate!!.update({ conn ->
             val ps = conn.prepareStatement(sql, arrayOf(sequence))
-            values.keys.sorted().forEachIndexed { index, column ->
-                if (values[column] !is Expression) { // clean binding
-                    ps.setObject(index + 1, values[column])
-                }
+            parameters.forEachIndexed { index, param ->
+                ps.setObject(index + 1, param)
             }
             ps
         }, keyHolder)
@@ -1004,7 +1003,6 @@ open class Builder: Cloneable {
             return effected
         }
         val sql = grammar.compileInsert(this, values)
-        printDebugInfo(sql, values)
         return insert(sql, values)
     }
 
@@ -1017,6 +1015,7 @@ open class Builder: Cloneable {
             }
         }
         parameters = cleanBindings(parameters) as MutableList<Any?>
+        printDebugInfo(sql, parameters)
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
     }
 
