@@ -96,7 +96,7 @@ open class Grammar {
             val table = wrapTable(join.table)
             val nestedJoins = if (join.joins.isEmpty()) "" else " " + this.compileJoins(query, join.joins)
             val tableAndNestedJoins = if (join.joins.isEmpty()) table else "($table$nestedJoins)"
-            return "${join.type} join $tableAndNestedJoins ${compileWheres(join, 0)}".trim() // 这个 0 是乱写的，用不到
+            "${join.type} join $tableAndNestedJoins ${compileWheres(join, 0)}".trim() // 这个 0 是乱写的，用不到
         }.joinToString(" ")
     }
 
