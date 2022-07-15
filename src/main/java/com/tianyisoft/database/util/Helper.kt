@@ -52,7 +52,7 @@ fun empty(obj: Any?): Boolean {
         is String -> obj.length == 0
         is Collection<*> -> obj.isEmpty()
         is Array<*> -> obj.size == 0
-        is Number -> obj == 0
+        is Number -> obj.toDouble().compareTo(0) == 0
         else -> false
     }
 }
@@ -71,7 +71,7 @@ fun Any?.toBool(): Boolean {
     return when(val value = this) {
         null -> false
         is Boolean -> value
-        is Number -> value != 0
+        is Number -> value.toDouble().compareTo(0) != 0
         is String -> !(value == "" || value == "0" || value.lowercase() == "false")
         is Collection<*> -> value.isNotEmpty()
         is Array<*> -> value.isNotEmpty()
