@@ -1053,8 +1053,35 @@ open class Builder: Cloneable {
         }
     }
 
-    public override fun clone(): Any {
-        return super.clone()
+    public override fun clone(): Builder {
+        val builder = Builder()
+        builder.jdbcTemplate = jdbcTemplate
+        builder.grammar = grammar
+        builder.processor = processor
+        if (debug) {
+            builder.setDebugMode()
+        }
+        builder.from = from
+        builder.limit = limit
+        builder.unionLimit = unionLimit
+        builder.offset = offset
+        builder.unionOffset = unionOffset
+        builder.wheres.addAll(wheres)
+        builder.unions.addAll(unions)
+        builder.joins.addAll(joins)
+        builder.groups.addAll(groups)
+        builder.havings.addAll(havings)
+        builder.orders.addAll(orders)
+        builder.unionOrders.addAll(unionOrders)
+        aggregate.forEach { (t, u) ->
+            builder.aggregate[t] = u
+        }
+        builder.distinct = distinct
+        builder.columns = columns.map { it } as MutableList
+        bindings.forEach { (t, u) ->
+            builder.bindings[t] = u.map { it } as MutableList
+        }
+        return builder
     }
 
     fun copy(): Builder {
