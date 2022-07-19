@@ -6,6 +6,7 @@ import com.tianyisoft.database.grammar.MysqlGrammar
 import com.tianyisoft.database.processor.MySqlProcessor
 import com.tianyisoft.database.processor.Processor
 import com.tianyisoft.database.util.*
+import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.support.GeneratedKeyHolder
@@ -14,7 +15,7 @@ import kotlin.reflect.full.memberFunctions
 
 
 open class Builder: Cloneable {
-    private var debug = false
+    private val log = LoggerFactory.getLogger(Builder::class.java)
     var from: Any? = null
     var limit: Int? = null
     var unionLimit: Int? = null
@@ -49,11 +50,6 @@ open class Builder: Cloneable {
         listOf("select", "from", "join", "where", "groupBy", "having", "order", "union", "unionOrder").forEach {
             bindings[it] = mutableListOf()
         }
-    }
-
-    fun setDebugMode(): Builder {
-        debug = true
-        return this
     }
 
     fun select(vararg fields: Any): Builder {
@@ -744,12 +740,8 @@ open class Builder: Cloneable {
     }
 
     private fun printDebugInfo(sql: String, bindings: Any?) {
-        if (debug) {
-            println("----sql-------------------------")
-            println("- sql: $sql")
-            println("- bindings: $bindings")
-            println("--------------------------------")
-        }
+        log.debug("- sql: $sql")
+        log.debug("- bindings: $bindings")
     }
 
     protected fun <T : Any> runSelect(rowMapper: RowMapper<T>? = null): List<Any> {
@@ -970,8 +962,7 @@ open class Builder: Cloneable {
     }
 
     fun dump(): Builder {
-        println(this.toSql())
-        println(this.getFlattenBindings())
+        printDebugInfo(this.toSql(), this.getFlattenBindings())
         return this
     }
     fun insert(values: Map<String, Any?>): Int {
@@ -1058,9 +1049,6 @@ open class Builder: Cloneable {
         builder.jdbcTemplate = jdbcTemplate
         builder.grammar = grammar
         builder.processor = processor
-        if (debug) {
-            builder.setDebugMode()
-        }
         builder.from = from
         builder.limit = limit
         builder.unionLimit = unionLimit
