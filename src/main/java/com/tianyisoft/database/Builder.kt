@@ -928,6 +928,10 @@ open class Builder: Cloneable {
         return queryResult.map { it[columnName] }
     }
 
+    fun implode(column: Any, glue: String = ""): String {
+        return pluck(column).joinToString(glue)
+    }
+
     fun pluck(column: Any, key: Any): Map<String, Any?> {
         val queryResult = get(column, key)
         if (empty(queryResult)) {
@@ -943,11 +947,10 @@ open class Builder: Cloneable {
 
     protected fun stripTableForPluck(column: Any?): String? {
         if (column == null) return null
-        var columnName = ""
-        if (column is Expression) { // 这里放个魔法，有 __expression__ 前缀的去掉前缀才能给出正确的列名
-            columnName = column.value as String
+        val columnName = if (column is Expression) {
+            column.value as String
         } else {
-            columnName = column as String
+            column as String
         }
         val separator = if (columnName.contains(" as ", true)) "\\s+as\\s+" else "\\."
         return columnName.split(Regex(separator)).last()
@@ -962,7 +965,8 @@ open class Builder: Cloneable {
     }
 
     fun dump(): Builder {
-        printDebugInfo(this.toSql(), this.getFlattenBindings())
+        println("sql:" + this.toSql())
+        println("bindings" + this.getFlattenBindings().toString())
         return this
     }
     fun insert(values: Map<String, Any?>): Int {
@@ -1025,6 +1029,20 @@ open class Builder: Cloneable {
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
         printDebugInfo(sql, parameters)
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
+    }
+
+    fun increment(column: String, amount: Number = 1, extra: Map<String, Any?> = mutableMapOf()): Int {
+        extra as MutableMap
+        val wrapped = grammar.wrap(column)
+        extra[column] = Expression("$wrapped + $amount")
+        return update(extra)
+    }
+
+    fun decrement(column: String, amount: Number = -1, extra: Map<String, Any?> = mutableMapOf()): Int {
+        extra as MutableMap
+        val wrapped = grammar.wrap(column)
+        extra[column] = Expression("$wrapped - $amount")
+        return update(extra)
     }
 
     fun delete(id: Any? = null): Int {
