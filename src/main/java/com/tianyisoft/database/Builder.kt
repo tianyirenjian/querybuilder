@@ -1044,7 +1044,7 @@ open class Builder: Cloneable {
         }
     }
 
-    public override fun clone(): Builder {
+    public override fun clone(): Any {
         val builder = Builder()
         builder.jdbcTemplate = jdbcTemplate
         builder.grammar = grammar
