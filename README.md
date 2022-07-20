@@ -138,7 +138,7 @@ if (builder.table("users").where("status", "=", 0).exists()) {
 
 ### Select 语句
 
-#### 指定一个 Select 语句#
+#### 指定一个 Select 语句
 
 使用 `select` 方法可以指定要查询的列
 
