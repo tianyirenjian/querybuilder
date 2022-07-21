@@ -155,8 +155,8 @@ open class Builder: Cloneable {
         return joinWhere(table, firstOrClosure, operator, second, "left")
     }
 
-    fun leftJoinSub(query: (Builder) -> Unit, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
-        joinSub(query, alias, firstOrClosure, operator, second, "left")
+    fun leftJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
+        joinSub(queryOrClosure, alias, firstOrClosure, operator, second, "left")
 
     fun rightJoin(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
         return join(table, firstOrClosure, operator, second, "right")
@@ -166,8 +166,8 @@ open class Builder: Cloneable {
         return joinWhere(table, firstOrClosure, operator, second, "right")
     }
 
-    fun rightJoinSub(query: (Builder) -> Unit, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
-        joinSub(query, alias, firstOrClosure, operator, second, "right")
+    fun rightJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
+        joinSub(queryOrClosure, alias, firstOrClosure, operator, second, "right")
 
 
     fun crossJoin(table: String, firstOrClosure: Any? = null, operator: String? = null, second: String? = null): Builder {
@@ -704,6 +704,16 @@ open class Builder: Cloneable {
             forPage(page, pageSize).get()
         } else {
             listOf()
+        }
+        return Page.new(page, pageSize, total, results)
+    }
+
+    fun <T : Any> paginateObject(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
+        val total = getCountForPagination()
+        val results = if (total > 0) {
+            forPage(page, pageSize).getObject(rowMapper)
+        } else {
+            listOf<T>()
         }
         return Page.new(page, pageSize, total, results)
     }
