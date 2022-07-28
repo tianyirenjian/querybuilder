@@ -10,14 +10,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.3</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.4'
+implementation 'com.tianyisoft.database:querybuilder:1.0.3'
 ```
 
 ### 使用说明
@@ -471,6 +471,219 @@ val users = builder.table("users")
 ```
 
 
-太累了，停一下
+### Ordering, Grouping, Limit & Offset
 
-coming soon ...
+#### 排序
+
+`orderBy` 方法
+
+`orderBy` 方法允许按给定列对查询结果进行排序。`orderBy` 接受的第一个参数应该是排序的列，而第二个参数确定排序的方向，可以是 `asc` 或 `desc`,默认是 `asc`
+
+```kotlin
+val users = builder.table("users")
+    .orderBy("name", "asc")
+    .get()
+```
+
+可以多次调用来使用多个字段排序,还有直接使用 `desc` 的 `orderByDesc` 方法
+
+```kotlin
+val users = builder.table("users")
+    .orderBy("name", "asc")
+    .orderBy("age", "desc")
+    .orderByDesc("created_at")
+    .get()
+```
+
+`latest` 和 `oldest` 方法
+
+使用 `latest` 和 `oldest` 方法可以按照日期进行 `desc` / `asc` 排序，默认使用 `created_at` 字段进行排序，也可以自己传递要使用的字段
+
+```kotlin
+// select * from `users` order by `created_at` desc
+val users = builder.table("users")
+    .latest()
+    .get()
+```
+
+随机排序
+
+使用 `inRandomOrder` 方法可以交查询结果随机排序
+
+```kotlin
+val users = builder.table("users")
+    .inRandomOrder()
+    .get()
+```
+
+移除已存在的排序
+
+使用 `reorder` 方法可以移除已存在的排序,也可以传递参数像使用 `orderBy` 一样重新指定排序
+
+```kotlin
+val users = builder.table("users")
+    .orderBy("name", "asc")
+    .orderBy("age", "desc")
+    .reorder()
+    .get()
+```
+
+#### 分组
+
+`groupBy` 和 `having` 方法
+
+`groupBy` 和 `having` 方法可以将查询结果分组。`having` 方法的使用方法类似于 `where` 方法。 `groupBy` 可以接受多个分组参数
+
+```kotlin
+val users = builder.table("users")
+    .selectRaw("count(*) as aggregate, age")
+    .groupBy("age")
+    .having("aggregate", ">", 19)
+    .get()
+```
+
+与 `having` 类似的还有 `havingBetween`, 使用方法类似 `whereBetween`
+
+#### Limit 和 Offset
+
+`limit` 和 `offset` 用来限制查询结果的返回数量或者在查询结果中跳过的数量, 还有两个方法 `take` 和 `skip` 分别是 `limit` 和 `offset` 方法的别名
+
+```kotlin
+val users = builder.table("users")
+    .limit(3)
+    .offset(5)
+    .get()
+```
+
+#### forPage 和 paginate
+
+`forPage` 方法内部使用 `limit` 和 `offset` 来取某一页的数据
+
+```kotlin
+val users = builder.table("users")
+    .forPage(1, 3) // 第 1 页， 取 3 个
+    .get()
+```
+
+`paginate` 方法是自动的分页方法，会执行两条 sql 语句，分别查总数和条目。直接返回分页对象，包括总数量，总页数等。默认当前第 1 页，每页 15条，可以通过传参数修改
+
+```kotlin
+val page = builder.table("users")
+    .paginate()
+```
+
+`paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以使用 `paginateObject` 方法来传递 `RowMapper` 返回对象类型
+
+### 条件语句
+
+有时候查询列表需要根据前台传过来的值来决定要不要使用某列进行筛选，这时可以使用 `ifTrue`, `whenTrue`, `ifFalse`, `whenFalse` 方法来处理，`if` 和 `when` 开头的方法是等价的
+
+```kotlin
+val status = request.getParameter("status")
+
+val users = builder.table("users")
+    .whenTrue(status != null, { query ->
+        query.where("status", "=", status)
+    })
+    .get()
+```
+
+这些方法还有第三个参数，当条件不成立的时候，不会执行第二个参数，而是执行第三个。
+
+```kotlin
+val deleted = false // 我这时定义死了
+
+val users = builder.table("users")
+    .whereTrue(deleted, {
+        it.whereNotNull("deleted")
+    }, {
+        it.whereNull("deleted") // 会执行这一条，就像 if/else 一样
+    })
+    .get()
+```
+
+### 插入
+
+虽然是叫 querybuilder, 但是也支持简单的增删改, ^_^。
+
+`insert`, `insertGetId` 和 `insertOrIgnore` 用于给数据库插入记录
+
+`insert` 支持单条插入和多条插入，多条插入还可以设置分批插入,单条插入的参数是 `Map<String, Any?>` 类型，多条插入则是 `List<Map<String, Any?>>`，返回的是插入成功的条数
+
+```
+val rows = builder.table("users")
+    .insert(hashMapOf(
+        "name" to "tom",
+        "age" to 20,
+        "created_at" to Date()
+    ))
+```
+
+`insertGetId` 和单条插入时的 `insert` 方法一致，但是返回的是自增的 id， 如果自增字段不是 id，可以通过第二个参数设置
+
+`insertOrIgnore` 会忽略错误
+
+### 修改
+
+`update` 用于更新数据,参数是 `Map<String, Any?>` 类型，更新可以使用表达式，比如给某列加 1
+
+```kotlin
+builder.table("users")
+    .where("id", "=", 3)
+    .update(hashMapOf(
+        "name" to "Jerry",
+        "age" to Expression("age + 1")
+    ))
+```
+
+`increment` 和 `decrement` 用于增加或减少指定字段的值，内部使用的就是 `update` 方法加 `Expression` 表达式
+
+```
+builder.table("users")
+    .where("id", "=" 3)
+    .increment("age", 2) // 加两岁
+```
+
+### 删除
+
+`delete` 方法可以删除表的记录，可以一次删除一条或多条
+
+```kotlin
+builder.table("users")
+    .delete(3)
+```
+
+或
+
+```kotlin
+builder.table("users")
+    .where("id", ">", 30)
+    .delete()
+```
+
+### 清空表
+
+`truncate` 方法用来清空表，不过不建议使用，清空表这种高风险的操作，还是手动操作比较好
+
+```kotlin
+builder.table("users").truncate()
+```
+
+### 调试
+
+可以打印出当前的 sql 语句和绑定的数据，用来判断逻辑是否正确
+
+```kotlin
+builder.table("users").where("id", "=", 3).dump()
+```
+
+以上程序会打印出
+
+```text
+sql: select * from `users` where `id` = ?
+bindings: [3]
+```
+
+### 结语
+
+上面只是各个方法的简介，更复杂的用法也可能没有提到，可以翻看源码了解。另外，有用的方法会一直增加，文档也会一直完善。
