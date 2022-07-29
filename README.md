@@ -100,15 +100,38 @@ val names = builder.table("users").pluck("name", "id") // { "1": "Tom", "2": "Je
 
 #### 分块获取
 
-假如数据库有成千上万条数据，可以通过 `chunk` 方法分块取出
+假如数据库有成千上万条数据，可以通过 `chunk` 方法分块取出, 闭包有两个参数，分别是分组后的数据，和当前页码，也就是第几组
 
 ```kotlin
-builder.table("users").chunk(20) { users ->
+builder.table("users").chunk(20) { users, page ->
     for (user in users) {
         println(user)
     }
     true // 必要的， 返回 true 会继续执行，若返回 false 则中断执行
 }
+```
+
+如果在使用 `chunk` 获取数据的同时修改数据，则 `chunk` 获取的数据会有问题，这时可以通过 `chunkById` 来分块获取, 用法和 `chunk` 一致，可以用第三个参数来设置 id 列名。
+
+```kotlin
+builder.table("users").chunkById(20, { users, page ->
+    for (user in users) {
+        println(user)
+    }
+    true // 必要的， 返回 true 会继续执行，若返回 false 则中断执行
+}, "id")
+```
+
+除了使用 `chunk` 和 `chunkById` 以外，也可以使用 `each` 和 `eachById`, 相比来说，它们更进一步，分组获取后，再循环每一条数据执行操作。
+
+`each` 和 `eachById` 闭包有两个参数，第一个当前的单条数据，第二个是当前数据的索引，有别于 `chunk` 和 `chunkById` 的页码
+
+```kotlin
+builder.table("apps").eachById({row, index ->
+    println("index $index:")
+    println(row)
+    true
+})
 ```
 
 #### 聚合函数
@@ -621,7 +644,7 @@ val rows = builder.table("users")
 
 `insertGetId` 和单条插入时的 `insert` 方法一致，但是返回的是自增的 id， 如果自增字段不是 id，可以通过第二个参数设置
 
-`insertOrIgnore` 会忽略错误
+`insertOrIgnore` 会忽略错误, 用法和 `insert` 一致
 
 ### 修改
 

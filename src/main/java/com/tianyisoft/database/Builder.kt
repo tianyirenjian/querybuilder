@@ -606,12 +606,12 @@ open class Builder: Cloneable {
         return offset((page - 1) * pageSize).limit(pageSize)
     }
 
-    fun forPageBeforeId(pageSize: Int = 15, lastId: Int = 0, column: String = "id"): Builder {
+    fun forPageBeforeId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
         orders = removeExistingOrdersFor(column)
         return where(column, "<", lastId).orderBy(column, "desc").limit(pageSize)
     }
 
-    fun forPageAfterId(pageSize: Int = 15, lastId: Int = 0, column: String = "id"): Builder {
+    fun forPageAfterId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
         orders = removeExistingOrdersFor(column)
         return where(column, ">", lastId).orderBy(column, "asc").limit(pageSize)
     }
@@ -897,14 +897,14 @@ open class Builder: Cloneable {
         return result?.values?.first()
     }
 
-    fun chunk(count: Int, callback:(List<Map<String, Any?>>) -> Boolean): Boolean {
+    fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
         do {
             val results = forPage(page, count).get()
             val countResults = results.size
             if (countResults == 0) break
-            if (!callback(results)) {
+            if (!callback(results, page)) {
                 return false
             }
             page ++
@@ -913,14 +913,45 @@ open class Builder: Cloneable {
         return true
     }
 
-    fun each(callback: (Map<String, Any?>) -> Boolean, count: Int = 1000): Boolean {
-        return chunk(count) {
-            it.forEach { row ->
-                if (!callback(row))
+    fun each(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000): Boolean {
+        return chunk(count) { rows, page ->
+            rows.forEachIndexed { index, row ->
+                if (!callback(row, (page - 1) * count + index))
                     return@chunk false
             }
             true
         }
+    }
+
+    fun chunkById(count: Int, callback: (List<Map<String, Any?>>, Int) -> Boolean, column: String = "id"): Boolean {
+        var lastId: Long? = 0
+        var page = 1
+        do {
+            val clone = this.copy()
+            val results = clone.forPageAfterId(count, lastId!!, column).get()
+            val countResults = results.size
+            if (countResults == 0) break
+            if (!callback(results, page)) {
+                return false
+            }
+            lastId = results.last()[column] as Long?
+            if (lastId == null) {
+                throw RuntimeException("The chunkById operation was aborted because the [$column] column is not present in the query result.")
+            }
+            page ++
+        } while (countResults == count)
+        return true
+    }
+
+    fun eachById(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000, column: String = "id"): Boolean {
+        return chunkById(count, { rows, page ->
+            rows.forEachIndexed { index, row ->
+                if (!callback(row, (page - 1) * count + index)) {
+                    return@chunkById false
+                }
+            }
+            true
+        }, column)
     }
 
     protected fun enforceOrderBy() {
@@ -1011,7 +1042,7 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
-    fun insert(sql: String, values: List<Map<String, Any?>>): Int {
+    protected fun insert(sql: String, values: List<Map<String, Any?>>): Int {
         var parameters = mutableListOf<Any?>()
         val columns = values.first().keys.sorted()
         values.forEach { value ->
@@ -1028,9 +1059,15 @@ open class Builder: Cloneable {
         return insertOrIgnore(listOf(values))
     }
 
-    fun insertOrIgnore(values: List<Map<String, Any?>>): Int {
+    fun insertOrIgnore(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+        if (batch != 0) {
+            var effected = 0
+            values.chunked(batch).forEach {
+                effected += insertOrIgnore(it, 0)
+            }
+            return effected
+        }
         val sql = grammar.compileInsertOrIgnore(this, values)
-        printDebugInfo(sql, values)
         return insert(sql, values)
     }
 
