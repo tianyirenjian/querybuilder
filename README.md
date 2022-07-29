@@ -1,4 +1,4 @@
-# querybuilder
+# QueryBuilder
 
 数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是因为没有默认参数所以体验略差。
 
