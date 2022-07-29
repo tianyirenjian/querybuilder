@@ -103,7 +103,7 @@ val names = builder.table("users").pluck("name", "id") // { "1": "Tom", "2": "Je
 假如数据库有成千上万条数据，可以通过 `chunk` 方法分块取出, 闭包有两个参数，分别是分组后的数据，和当前页码，也就是第几组
 
 ```kotlin
-builder.table("users").chunk(20) { users, page ->
+builder.table("users").orderBy("id").chunk(20) { users, page ->
     for (user in users) {
         println(user)
     }
@@ -124,7 +124,7 @@ builder.table("users").chunkById(20, { users, page ->
 
 除了使用 `chunk` 和 `chunkById` 以外，也可以使用 `each` 和 `eachById`, 相比来说，它们更进一步，分组获取后，再循环每一条数据执行操作。
 
-`each` 和 `eachById` 闭包有两个参数，第一个当前的单条数据，第二个是当前数据的索引，有别于 `chunk` 和 `chunkById` 的页码
+`each` 和 `eachById` 闭包有两个参数，第一个是当前的单条数据，第二个是当前数据的索引，有别于 `chunk` 和 `chunkById` 的页码
 
 ```kotlin
 builder.table("apps").eachById({row, index ->
@@ -133,6 +133,19 @@ builder.table("apps").eachById({row, index ->
     true
 })
 ```
+
+
+`chunk` 和 `each` 返回的数据都是 `Map` 类型的，也可以使用 `chunkObject` 和 `eachObject` 方法来返回对象。 `chunkById` 和 `eachById` 暂时没有对应的方法。
+
+```kotlin
+builder.table("apps").select("id", "name").orderBy("id")
+    .eachObject(BeanPropertyRowMapper(Apps::class.java), { app, index ->
+        println(app)
+        true
+    })
+```
+
+使用 `chunk` 和 `each` 时，必须指定至少一个排序，`chunkById` 和 `eachById` 则不需要。
 
 #### 聚合函数
 

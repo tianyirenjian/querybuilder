@@ -913,11 +913,38 @@ open class Builder: Cloneable {
         return true
     }
 
+    fun <T: Any> chunkObject(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+        enforceOrderBy()
+        var page = 1
+        do {
+            val results = forPage(page, count).getObject(rowMapper)
+            val countResult = results.size
+            if (countResult == 0) break
+            if (!callback(results, page)) {
+                return false
+            }
+            page ++
+        } while (count == countResult)
+        return true
+    }
+
     fun each(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000): Boolean {
         return chunk(count) { rows, page ->
             rows.forEachIndexed { index, row ->
-                if (!callback(row, (page - 1) * count + index))
+                if (!callback(row, (page - 1) * count + index)) {
                     return@chunk false
+                }
+            }
+            true
+        }
+    }
+
+    fun <T: Any> eachObject(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
+        return chunkObject(rowMapper, count) { rows, page ->
+            rows.forEachIndexed { index, row ->
+                if (!callback(row, (page - 1) * count + index)) {
+                    return@chunkObject false
+                }
             }
             true
         }
@@ -934,7 +961,7 @@ open class Builder: Cloneable {
             if (!callback(results, page)) {
                 return false
             }
-            lastId = results.last()[column] as Long?
+            lastId = results.last()[column]?.toString()?.toLong()
             if (lastId == null) {
                 throw RuntimeException("The chunkById operation was aborted because the [$column] column is not present in the query result.")
             }
