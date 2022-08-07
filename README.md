@@ -1,6 +1,8 @@
 # QueryBuilder
 
-数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是因为没有默认参数所以体验略差。
+数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是因为没有默认参数所以体验略差, 某些复杂参数的函数也无法调用。
+
+也可以使用 kotlin 来写 Repository 层调用，然后供其他的 java 代码直接调用方法。
 
 ### 安装
 
@@ -10,14 +12,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.3'
+implementation 'com.tianyisoft.database:querybuilder:1.0.4'
 ```
 
 ### 使用说明
@@ -37,6 +39,8 @@ builder.jdbcTemplate = jdbcTemplate
 val builder2 = Builder()
 builder2.jdbcTemplate = jdbcTemplate
 ```
+
+这里是公共方法，也可以通过后面的 `AbstractRepository` 来避免手动创建实例。
 
 ### 获取结果
 
@@ -719,6 +723,56 @@ builder.table("users").where("id", "=", 3).dump()
 sql: select * from `users` where `id` = ?
 bindings: [3]
 ```
+
+#### AbstractRepository
+
+从 1.0.4 版本添加了一个 `AbstractRepository` 类，在使用 spring 框架时可以继承该类，并添加 `@Component` 就可以注入使用了
+
+继承 `AbstractRepository` 需要注入一个 `JdbcTemplate`, 并提供表名。
+
+```kotlin
+import com.tianyisoft.database.AbstractRepository
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.stereotype.Component
+import com.tianyisoft.database.util.Page
+
+@Component
+open class UserRepository(private val jdbcTemplate: JdbcTemplate): AbstractRepository() {
+    override val table: String = "users"
+    override val dbTemplate: JdbcTemplate = jdbcTemplate
+
+    // 获取未删除用户的分页数据
+    fun notDeleted(): Page {
+        return query().whereNotNull("deleted_at").orderBy("id").paginate()
+    }
+}
+```
+
+如果习惯使用 java 写程序，可以使用 kotlin 来实现 Repository, 然后通过 java 代码来调用，这样就只有 Repository 一层是 kotlin 代码。因为使用 kotlin 来调用 querybuilder 实在是太舒服了.
+
+`AbstractRepository` 也实现了简单的增删改查方法, 也可以通过 `query()` 方法使用更多的 querybuilder 提供的方法。
+
+```kotlin
+val id = userRepository.insert(hashMapOf(/*...*/))
+userRepository.find(id)
+userRepository.update(id, hashMapOf(/*...*/))
+userRepository.delete(id)
+userRepository.query().where("id", ">", 3).orWhere("age", "<", 10).get()
+```
+
+`AbstractRepository` 还提供了简单的 `beforeInsert`， `afterInsert`, `beforeUpdate` 和 `afterUpdate` 方法用于在增加和修改数据前后做一些操作. 可以通过继承方法使用它们。
+
+比如增加数据前要设置 `created_at` 和 `updated_at` 的值。
+
+```kotlin
+override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
+    val now = Date()
+    params["created_at"] = now
+    params["updated_at"] = now
+    return params
+}
+```
+
 
 ### 结语
 
