@@ -724,7 +724,7 @@ sql: select * from `users` where `id` = ?
 bindings: [3]
 ```
 
-#### AbstractRepository
+### AbstractRepository
 
 从 1.0.4 版本添加了一个 `AbstractRepository` 类，在使用 spring 框架时可以继承该类，并添加 `@Component` 就可以注入使用了
 
