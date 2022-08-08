@@ -5,6 +5,7 @@ import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
 import com.tianyisoft.database.processor.MySqlProcessor
 import com.tianyisoft.database.processor.Processor
+import com.tianyisoft.database.relations.*
 import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
@@ -32,6 +33,7 @@ open class Builder: Cloneable {
     var distinct: Boolean = false
     var columns: MutableList<Any> = mutableListOf()
     val bindings: LinkedHashMap<String, MutableList<Any?>> = linkedMapOf() // order is important
+    val withes: MutableMap<String, Map<String, Any?>> = mutableMapOf()
 
     private val operators = listOf(
         "=", "<", ">", "<=", ">=", "<>", "!=", "<=>",
@@ -647,6 +649,27 @@ open class Builder: Cloneable {
 
     fun unionAll(query: Builder) = union(query, true)
 
+    fun with(name: String, relation: Relation, callable: ((Builder) -> Unit)? = null, count: Boolean = false): Builder {
+        withes[name] = hashMapOf(
+            "relation" to relation,
+            "count" to count,
+            "callable" to callable
+        )
+        return this
+    }
+
+    fun with(name: String, relation: () -> Relation, callback: ((Builder) -> Unit)? = null, count: Boolean = false): Builder {
+        return with(name, relation(), callback, count)
+    }
+
+    fun withCount(name: String, relation: Relation, callback: ((Builder) -> Unit)? = null): Builder {
+        return with(name, relation, callback, true)
+    }
+
+    fun withCount(name: String, relation: () -> Relation, callback: ((Builder) -> Unit)? = null): Builder {
+        return with(name, relation, callback, true)
+    }
+
     fun getFlattenBindings(): List<Any?> {
         return flatten(bindings)
     }
@@ -693,9 +716,131 @@ open class Builder: Cloneable {
     @Suppress("UNCHECKED_CAST")
     fun get(vararg fields: Any): List<Map<String, Any?>> {
         val fieldList = if (fields.isEmpty()) listOf("*") else fields.toList()
-        return onceWithColumns(fieldList) {
+        var result = onceWithColumns(fieldList) {
             this.processor.processSelect(this, runSelect<List<*>>())
         } as List<Map<String, Any?>>
+        if (withes.isNotEmpty()) {
+            withes.forEach { (name, map) ->
+                val relation = map["relation"] as Relation
+                val count = map["count"] as Boolean
+                val callable = map["callable"] as ((Builder) -> Unit)?
+                result = resolveRelation(result, name, relation, count, callable)
+            }
+        }
+        return result
+    }
+
+    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean, callable: ((Builder) -> Unit)?): List<Map<String, Any?>> {
+        return when (relation) {
+            is HasOne -> resolveHashOne(result, name, relation, count, callable)
+            is BelongsTo -> resolveBelongsTo(result, name, relation, count, callable)
+            is BelongsToMany -> resolveBelongsToMany(result, name, relation, count, callable)
+            else -> result
+        }
+    }
+
+    private fun resolveHashOne(
+        result: List<Map<String, Any?>>,
+        name: String,
+        relation: HasOne,
+        count: Boolean,
+        callable: ((Builder) -> Unit)?
+    ): List<Map<String, Any?>> {
+        val builder = newQuery()
+        val keys = result.map { it[relation.localKey] }
+        builder.table(relation.table).whereIn(relation.foreignKey, keys)
+        if (callable != null) {
+            callable(builder)
+        }
+        if (count) {
+            val data = builder.groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
+            result.forEach {
+                it as MutableMap
+                it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
+            }
+        } else {
+            val data = builder.get()
+            result.forEach {
+                it as MutableMap
+                // 通过字符串比较，防止类型不统一造成的不相等
+                if (relation is HasMany) {
+                    it[name] = data.filter { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
+                } else {
+                    it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
+                }
+            }
+        }
+        return result
+    }
+
+    private fun resolveBelongsTo(
+        result: List<Map<String, Any?>>,
+        name: String,
+        relation: BelongsTo,
+        count: Boolean,
+        callable: ((Builder) -> Unit)?
+    ): List<Map<String, Any?>> {
+        val builder = newQuery()
+        val keys = result.map { it[relation.foreignKey] }
+        builder.table(relation.table).whereIn(relation.ownerKey, keys)
+        if (callable != null) {
+            callable(builder)
+        }
+        if (count) {
+            val data = builder.groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
+            result.forEach {
+                it as MutableMap
+                it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }?.get("aggregate") ?: 0
+            }
+        } else {
+            val data = builder.get()
+            result.forEach {
+                it as MutableMap
+                it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }
+            }
+        }
+        return result
+    }
+
+    private fun resolveBelongsToMany(
+        result: List<Map<String, Any?>>,
+        name: String,
+        relation: BelongsToMany,
+        count: Boolean,
+        callable: ((Builder) -> Unit)?
+    ): List<Map<String, Any?>> {
+        val builder = newQuery()
+        val keys = result.map { it[relation.localKey] }
+        builder.table(relation.pivotTable)
+            .leftJoin(relation.table, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
+            .whereIn("${relation.pivotTable}.${relation.foreignPivotKey}", keys)
+        if (callable != null) {
+            callable(builder)
+        }
+        if (count) {
+            val data = builder
+                .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, count(*) as aggregate")
+                .groupBy("_pivot_id")
+                .get()
+            result.forEach {
+                it as MutableMap
+                it[name] = data.firstOrNull { datum -> datum["_pivot_id"].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
+            }
+        } else {
+            val data = builder
+                .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, ${relation.table}.*")
+                .get()
+            result.forEach {
+                it as MutableMap
+                it[name] = data.filter { datum -> datum["_pivot_id"].toString() == it[relation.localKey].toString() }
+                    .map {
+                        it as MutableMap
+                        it.remove("_pivot_id")
+                        it
+                    }
+            }
+        }
+        return result
     }
 
     fun paginate(page: Int = 1, pageSize: Int = 15): Page {
