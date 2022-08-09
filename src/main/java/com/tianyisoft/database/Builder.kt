@@ -830,12 +830,18 @@ open class Builder: Cloneable {
             val data = builder
                 .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, ${relation.table}.*")
                 .get()
-            result.forEach {
-                it as MutableMap
-                it[name] = data.filter { datum -> datum["_pivot_id"].toString() == it[relation.localKey].toString() }
+            //中间表数据
+            val pivots = newQuery().table(relation.pivotTable).whereIn("${relation.pivotTable}.${relation.foreignPivotKey}", keys).get()
+            result.forEach { res ->
+                res as MutableMap
+                res[name] = data.filter { datum -> datum["_pivot_id"].toString() == res[relation.localKey].toString() }
                     .map {
                         it as MutableMap
                         it.remove("_pivot_id")
+                        it["pivot_table"] = pivots.firstOrNull { pivot ->
+                            pivot[relation.foreignPivotKey].toString() == res[relation.localKey].toString() &&
+                                    pivot[relation.relatedPivotKey].toString() == it[relation.relatedKey].toString()
+                        }
                         it
                     }
             }
