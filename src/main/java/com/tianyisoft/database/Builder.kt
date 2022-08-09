@@ -649,25 +649,24 @@ open class Builder: Cloneable {
 
     fun unionAll(query: Builder) = union(query, true)
 
-    fun with(name: String, relation: Relation, callable: ((Builder) -> Unit)? = null, count: Boolean = false): Builder {
+    fun with(name: String, relation: Relation, count: Boolean = false): Builder {
         withes[name] = hashMapOf(
             "relation" to relation,
-            "count" to count,
-            "callable" to callable
+            "count" to count
         )
         return this
     }
 
-    fun with(name: String, relation: () -> Relation, callback: ((Builder) -> Unit)? = null, count: Boolean = false): Builder {
-        return with(name, relation(), callback, count)
+    fun with(name: String, relation: () -> Relation, count: Boolean = false): Builder {
+        return with(name, relation(), count)
     }
 
-    fun withCount(name: String, relation: Relation, callback: ((Builder) -> Unit)? = null): Builder {
-        return with(name, relation, callback, true)
+    fun withCount(name: String, relation: Relation): Builder {
+        return with(name, relation, true)
     }
 
-    fun withCount(name: String, relation: () -> Relation, callback: ((Builder) -> Unit)? = null): Builder {
-        return with(name, relation, callback, true)
+    fun withCount(name: String, relation: () -> Relation): Builder {
+        return with(name, relation, true)
     }
 
     fun getFlattenBindings(): List<Any?> {
@@ -723,18 +722,17 @@ open class Builder: Cloneable {
             withes.forEach { (name, map) ->
                 val relation = map["relation"] as Relation
                 val count = map["count"] as Boolean
-                val callable = map["callable"] as ((Builder) -> Unit)?
-                result = resolveRelation(result, name, relation, count, callable)
+                result = resolveRelation(result, name, relation, count)
             }
         }
         return result
     }
 
-    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean, callable: ((Builder) -> Unit)?): List<Map<String, Any?>> {
+    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean): List<Map<String, Any?>> {
         return when (relation) {
-            is HasOne -> resolveHashOne(result, name, relation, count, callable)
-            is BelongsTo -> resolveBelongsTo(result, name, relation, count, callable)
-            is BelongsToMany -> resolveBelongsToMany(result, name, relation, count, callable)
+            is HasOne -> resolveHashOne(result, name, relation, count)
+            is BelongsTo -> resolveBelongsTo(result, name, relation, count)
+            is BelongsToMany -> resolveBelongsToMany(result, name, relation, count)
             else -> result
         }
     }
@@ -743,23 +741,19 @@ open class Builder: Cloneable {
         result: List<Map<String, Any?>>,
         name: String,
         relation: HasOne,
-        count: Boolean,
-        callable: ((Builder) -> Unit)?
+        count: Boolean
     ): List<Map<String, Any?>> {
-        val builder = newQuery()
         val keys = result.map { it[relation.localKey] }
-        builder.table(relation.table).whereIn(relation.foreignKey, keys)
-        if (callable != null) {
-            callable(builder)
-        }
+        setUpEmptyQuery(relation)
+        relation.table(relation.table).whereIn(relation.foreignKey, keys)
         if (count) {
-            val data = builder.groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
+            val data = relation.groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
             }
         } else {
-            val data = builder.get()
+            val data = relation.get()
             result.forEach {
                 it as MutableMap
                 // 通过字符串比较，防止类型不统一造成的不相等
@@ -777,23 +771,19 @@ open class Builder: Cloneable {
         result: List<Map<String, Any?>>,
         name: String,
         relation: BelongsTo,
-        count: Boolean,
-        callable: ((Builder) -> Unit)?
+        count: Boolean
     ): List<Map<String, Any?>> {
-        val builder = newQuery()
         val keys = result.map { it[relation.foreignKey] }
-        builder.table(relation.table).whereIn(relation.ownerKey, keys)
-        if (callable != null) {
-            callable(builder)
-        }
+        setUpEmptyQuery(relation)
+        relation.table(relation.table).whereIn(relation.ownerKey, keys)
         if (count) {
-            val data = builder.groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
+            val data = relation.groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }?.get("aggregate") ?: 0
             }
         } else {
-            val data = builder.get()
+            val data = relation.get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }
@@ -806,19 +796,16 @@ open class Builder: Cloneable {
         result: List<Map<String, Any?>>,
         name: String,
         relation: BelongsToMany,
-        count: Boolean,
-        callable: ((Builder) -> Unit)?
+        count: Boolean
     ): List<Map<String, Any?>> {
-        val builder = newQuery()
         val keys = result.map { it[relation.localKey] }
-        builder.table(relation.pivotTable)
-            .leftJoin(relation.table, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
-            .whereIn("${relation.pivotTable}.${relation.foreignPivotKey}", keys)
-        if (callable != null) {
-            callable(builder)
-        }
+        setUpEmptyQuery(relation)
+        relation.table(relation.table)
+            .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
+        relation.wherePivotIn(relation.foreignPivotKey, keys)
+
         if (count) {
-            val data = builder
+            val data = relation
                 .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, count(*) as aggregate")
                 .groupBy("_pivot_id")
                 .get()
@@ -827,11 +814,13 @@ open class Builder: Cloneable {
                 it[name] = data.firstOrNull { datum -> datum["_pivot_id"].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
             }
         } else {
-            val data = builder
+            val data = relation
                 .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, ${relation.table}.*")
                 .get()
             //中间表数据
-            val pivots = newQuery().table(relation.pivotTable).whereIn("${relation.pivotTable}.${relation.foreignPivotKey}", keys).get()
+            val newQuery = newQuery()
+            replayBelongsToMany(newQuery, relation)
+            val pivots = newQuery.table(relation.pivotTable).get()
             result.forEach { res ->
                 res as MutableMap
                 res[name] = data.filter { datum -> datum["_pivot_id"].toString() == res[relation.localKey].toString() }
@@ -847,6 +836,30 @@ open class Builder: Cloneable {
             }
         }
         return result
+    }
+
+    private fun replayBelongsToMany(builder: Builder, relation: BelongsToMany) {
+        relation.wherePivots.forEach {
+            builder.where(it[0]!!, it[1] as String?, it[2], it[3] as String)
+        }
+        relation.wherePivotBetweens.forEach {
+            builder.whereBetween(it[0] as String, it[1] as List<Any?>, it[2] as String, it[3] as Boolean)
+        }
+        relation.wherePivotIns.forEach {
+            builder.whereIn(it[0] as String, it[1] as Any, it[2] as String, it[3] as Boolean)
+        }
+        relation.wherePivotNulls.forEach {
+            builder.whereNull(it[0] as String, it[1] as String, it[2] as Boolean)
+        }
+        relation.orderBys.forEach {
+            builder.orderBy(it[0] as String, it[1] as String)
+        }
+    }
+
+    private fun setUpEmptyQuery(builder: Builder) {
+        builder.jdbcTemplate = jdbcTemplate
+        builder.grammar = grammar
+        builder.processor = processor
     }
 
     fun paginate(page: Int = 1, pageSize: Int = 15): Page {
