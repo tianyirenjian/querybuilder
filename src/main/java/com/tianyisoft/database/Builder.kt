@@ -618,7 +618,7 @@ open class Builder: Cloneable {
         return where(column, ">", lastId).orderBy(column, "asc").limit(pageSize)
     }
 
-    protected fun removeExistingOrdersFor(column: String): MutableList<Map<String, Any?>> {
+    protected open fun removeExistingOrdersFor(column: String): MutableList<Map<String, Any?>> {
         return orders.filterNot {
             if (it.containsKey("column")) {
                 it["column"] == column
@@ -743,11 +743,12 @@ open class Builder: Cloneable {
         relation: HasOne,
         count: Boolean
     ): List<Map<String, Any?>> {
-        val keys = result.map { it[relation.localKey] }
+        val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
         relation.table(relation.table).whereIn(relation.foreignKey, keys)
         if (count) {
-            val data = relation.groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
+            relation.withes.clear()
+            val data = relation.reorder().groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
@@ -773,11 +774,12 @@ open class Builder: Cloneable {
         relation: BelongsTo,
         count: Boolean
     ): List<Map<String, Any?>> {
-        val keys = result.map { it[relation.foreignKey] }
+        val keys = result.map { it[relation.foreignKey] }.distinct()
         setUpEmptyQuery(relation)
         relation.table(relation.table).whereIn(relation.ownerKey, keys)
         if (count) {
-            val data = relation.groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
+            relation.withes.clear()
+            val data = relation.reorder().groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }?.get("aggregate") ?: 0
@@ -792,20 +794,23 @@ open class Builder: Cloneable {
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun resolveBelongsToMany(
         result: List<Map<String, Any?>>,
         name: String,
         relation: BelongsToMany,
         count: Boolean
     ): List<Map<String, Any?>> {
-        val keys = result.map { it[relation.localKey] }
+        val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
         relation.table(relation.table)
             .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
         relation.wherePivotIn(relation.foreignPivotKey, keys)
 
         if (count) {
+            relation.withes.clear()
             val data = relation
+                .reorder()
                 .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, count(*) as aggregate")
                 .groupBy("_pivot_id")
                 .get()
@@ -826,13 +831,18 @@ open class Builder: Cloneable {
                 res[name] = data.filter { datum -> datum["_pivot_id"].toString() == res[relation.localKey].toString() }
                     .map {
                         it as MutableMap
-                        it.remove("_pivot_id")
                         it["pivot_table"] = pivots.firstOrNull { pivot ->
                             pivot[relation.foreignPivotKey].toString() == res[relation.localKey].toString() &&
                                     pivot[relation.relatedPivotKey].toString() == it[relation.relatedKey].toString()
                         }
                         it
                     }
+            }
+            // 删除 _pivot_id 列，不能在 前面删，否则导致结果异常
+            result.forEach {
+                (it[name] as List<MutableMap<String, Any?>>).forEach { row ->
+                    row.remove("_pivot_id")
+                }
             }
         }
         return result
@@ -1225,7 +1235,7 @@ open class Builder: Cloneable {
         if (batch != 0) {
             var effected = 0
             values.chunked(batch).forEach {
-                 effected += insert(it, 0)
+                effected += insert(it, 0)
             }
             return effected
         }
