@@ -258,7 +258,7 @@ open class Grammar {
         }
     }
 
-    fun compileRandom(seed: String): String {
+    open fun compileRandom(seed: String): String {
         return "RANDOM()"
     }
 

@@ -8,4 +8,8 @@ class MysqlGrammar: Grammar() {
     override fun compileInsertOrIgnore(builder: Builder, values: List<Map<String, Any?>>): String {
         return compileInsert(builder, values).replaceFirst("insert", "insert ignore")
     }
+
+    override fun compileRandom(seed: String): String {
+        return "rand()"
+    }
 }
