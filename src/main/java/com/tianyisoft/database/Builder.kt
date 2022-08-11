@@ -1,5 +1,6 @@
 package com.tianyisoft.database
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tianyisoft.database.exceptions.InvalidArgumentException
 import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
@@ -705,19 +706,8 @@ open class Builder: Cloneable {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> getObject(rowMapper: RowMapper<T>, vararg fields: Any): List<T> {
-        val fieldList = if (fields.isEmpty()) listOf("*") else fields.toList()
-        return onceWithColumns(fieldList) {
-            this.processor.processSelect(this, runSelect<T>(rowMapper))
-        } as List<T>
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    fun get(vararg fields: Any): List<Map<String, Any?>> {
-        val fieldList = if (fields.isEmpty()) listOf("*") else fields.toList()
-        var result = onceWithColumns(fieldList) {
-            this.processor.processSelect(this, runSelect<List<*>>())
-        } as List<Map<String, Any?>>
+    fun get(): List<Map<String, Any?>> {
+        var result = this.processor.processSelect(this, runSelect<List<*>>()) as List<Map<String, Any?>>
         if (withes.isNotEmpty()) {
             withes.forEach { (name, map) ->
                 val relation = map["relation"] as Relation
@@ -726,6 +716,18 @@ open class Builder: Cloneable {
             }
         }
         return result
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> get(rowMapper: RowMapper<T>): List<T> {
+        return this.processor.processSelect(this, runSelect<T>(rowMapper)) as List<T>
+    }
+
+    fun <T : Any> get(klass: Class<T>): List<T> {
+        val result = get()
+        val jsonMapper = jacksonObjectMapper()
+        val json = jsonMapper.writeValueAsString(result)
+        return jsonMapper.readValue(json, jsonMapper.typeFactory.constructCollectionType(List::class.java, klass))
     }
 
     private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean): List<Map<String, Any?>> {
@@ -873,21 +875,29 @@ open class Builder: Cloneable {
     }
 
     fun paginate(page: Int = 1, pageSize: Int = 15): Page {
-        val total = getCountForPagination()
-        val results = if (total > 0) {
-            forPage(page, pageSize).get()
-        } else {
-            listOf()
-        }
-        return Page.new(page, pageSize, total, results)
+        return paginate<Map<String,Any?>>(null, null, page, pageSize)
     }
 
-    fun <T : Any> paginateObject(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
+    fun <T : Any> paginate(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
+        return paginate(rowMapper, null, page, pageSize)
+    }
+
+    fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page {
+        return paginate(null, klass, page, pageSize)
+    }
+
+    private fun <T: Any> paginate(rowMapper: RowMapper<T>? = null, klass: Class<T>? = null, page: Int = 1, pageSize: Int = 15): Page{
         val total = getCountForPagination()
         val results = if (total > 0) {
-            forPage(page, pageSize).getObject(rowMapper)
+            if (rowMapper != null) {
+                forPage(page, pageSize).get(rowMapper)
+            } else if (klass != null) {
+                forPage(page, pageSize).get(klass)
+            } else {
+                forPage(page, pageSize).get()
+            }
         } else {
-            listOf<T>()
+            listOf()
         }
         return Page.new(page, pageSize, total, results)
     }
@@ -974,7 +984,8 @@ open class Builder: Cloneable {
         val results = cloneWithout(if(unions.isNotEmpty()) listOf() else listOf("columns"))
             .cloneWithoutBindings(if (unions.isNotEmpty()) listOf() else listOf("select"))
             .setAggregate(function, columns.toList())
-            .get(*columns.map { it }.toTypedArray())
+            .select(*columns.map { it }.toTypedArray())
+            .get()
         if (results.isNotEmpty()) {
             return results.first()["aggregate"]
         }
@@ -1034,16 +1045,16 @@ open class Builder: Cloneable {
         return where(column, operator, value, boolean).first()
     }
 
-    fun first(vararg fields: String): Map<String, Any?>? {
-        return take(1)
-            .get(*fields.map { it }.toTypedArray())
-            .firstOrNull()
+    fun first(): Map<String, Any?>? {
+        return take(1).get().firstOrNull()
     }
 
-    fun <T: Any> firstObject(rowMapper: RowMapper<T>, vararg fields: String): T? {
-        return take(1)
-            .getObject(rowMapper, *fields.map { it }.toTypedArray())
-            .firstOrNull()
+    fun <T: Any> first(rowMapper: RowMapper<T>): T? {
+        return take(1).get(rowMapper).firstOrNull()
+    }
+
+    fun <T: Any> first(klass: Class<T>): T? {
+        return take(1).get(klass).firstOrNull()
     }
 
     fun ifTrue(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null): Builder {
@@ -1058,43 +1069,49 @@ open class Builder: Cloneable {
         return whenTrue(true, callback)
     }
 
-    fun find(id: Any, vararg fields: String): Map<String, Any?>? {
-        return where("id", "=", id).first(*fields.map { it }.toTypedArray())
+    fun find(id: Any): Map<String, Any?>? {
+        return where("id", "=", id).first()
     }
 
-    fun <T: Any> findObject(id: Any, rowMapper: RowMapper<T>, vararg fields: String): T? {
-        return where("id", "=", id).firstObject(rowMapper, *fields.map { it }.toTypedArray())
+    fun <T: Any> find(id: Any, rowMapper: RowMapper<T>): T? {
+        return where("id", "=", id).first(rowMapper)
+    }
+
+    fun <T: Any> find(id: Any, klass: Class<T>): T? {
+        return where("id", "=", id).first(klass)
     }
 
     fun value(column: String): Any? {
-        val result = first(column)
-        return result?.values?.first()
+        val result = first()
+        return result?.get(column)
     }
 
     fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
-        enforceOrderBy()
-        var page = 1
-        do {
-            val results = forPage(page, count).get()
-            val countResults = results.size
-            if (countResults == 0) break
-            if (!callback(results, page)) {
-                return false
-            }
-            page ++
-        } while (count == countResults)
-
-        return true
+        return chunk(null, null, count, callback)
     }
 
-    fun <T: Any> chunkObject(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+    fun <T: Any> chunk(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+        return chunk(rowMapper, null, count, callback)
+    }
+
+    fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+        return chunk(null, klass, count, callback)
+    }
+
+    private fun <T: Any> chunk(rowMapper: RowMapper<T>? = null, klass: Class<T>? = null, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
         do {
-            val results = forPage(page, count).getObject(rowMapper)
+            val results = if (rowMapper != null) {
+                forPage(page, count).get(rowMapper)
+            } else if (klass != null) {
+                forPage(page, count).get(klass)
+            } else {
+                forPage(page, count).get()
+            }
             val countResult = results.size
             if (countResult == 0) break
-            if (!callback(results, page)) {
+            if (!callback(results as List<T>, page)) {
                 return false
             }
             page ++
@@ -1113,11 +1130,11 @@ open class Builder: Cloneable {
         }
     }
 
-    fun <T: Any> eachObject(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
-        return chunkObject(rowMapper, count) { rows, page ->
+    fun <T: Any> each(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
+        return chunk(rowMapper, count) { rows, page ->
             rows.forEachIndexed { index, row ->
                 if (!callback(row, (page - 1) * count + index)) {
-                    return@chunkObject false
+                    return@chunk false
                 }
             }
             true
@@ -1161,8 +1178,11 @@ open class Builder: Cloneable {
         }
     }
 
+    @Suppress("unchecked_cast")
     fun pluck(column: Any): List<Any?> {
-        val queryResult = get(column)
+        val queryResult = onceWithColumns(listOf(column)) {
+            this.get()
+        } as List<Map<String, Any?>>
         if (empty(queryResult)) {
             return emptyList<Any?>()
         }
@@ -1174,8 +1194,11 @@ open class Builder: Cloneable {
         return pluck(column).joinToString(glue)
     }
 
+    @Suppress("unchecked_cast")
     fun pluck(column: Any, key: Any): Map<String, Any?> {
-        val queryResult = get(column, key)
+        val queryResult = onceWithColumns(listOf(column, key)) {
+            get()
+        } as List<Map<String, Any?>>
         if (empty(queryResult)) {
             return emptyMap()
         }
