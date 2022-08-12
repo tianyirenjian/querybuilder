@@ -64,6 +64,13 @@ open class Builder: Cloneable {
         return this
     }
 
+    fun addSelect(vararg fields: Any): Builder {
+        fields.forEach {
+            columns.add(it)
+        }
+        return this
+    }
+
     fun selectSub(queryOrClosure: Any, alias: String): Builder {
         val sub = createSub(queryOrClosure)
         return selectRaw("(${sub.first}) as ${grammar.wrapTable(alias)}", sub.second)
@@ -646,24 +653,93 @@ open class Builder: Cloneable {
 
     fun unionAll(query: Builder) = union(query, true)
 
-    fun with(name: String, relation: Relation, count: Boolean = false): Builder {
-        withes[name] = hashMapOf(
-            "relation" to relation,
-            "count" to count
+    fun with(name: String, relation: Relation): Builder {
+        withes[name] = hashMapOf( // 先用 map，以后万一加别的参数
+            "relation" to relation
         )
         return this
     }
 
-    fun with(name: String, relation: () -> Relation, count: Boolean = false): Builder {
-        return with(name, relation(), count)
+    fun with(name: String, relation: () -> Relation): Builder {
+        return with(name, relation())
     }
 
-    fun withCount(name: String, relation: Relation): Builder {
-        return with(name, relation, true)
+    fun withAggregate(name: String, relation: Relation, function: String, column: String): Builder {
+        val sub = buildAggregateSub(relation, function, column)
+        selectSub(sub, name)
+        return this
     }
 
-    fun withCount(name: String, relation: () -> Relation): Builder {
-        return with(name, relation, true)
+    private fun buildAggregateSub(relation: Relation, function: String, column: String): Builder {
+        val builder = relation as Builder
+        setUpEmptyQuery(builder)
+        builder.withes.clear()
+        return when(relation) {
+            is HasOne -> aggregateHasOne(relation, function, aggregateColumn(relation, column))
+            is BelongsTo -> aggregateBelongsTo(relation, function, aggregateColumn(relation, column))
+            is BelongsToMany -> aggregateBelongsToMany(relation, function, aggregateColumn(relation, column))
+            else -> relation
+        }
+    }
+
+    private fun aggregateColumn(relation: Relation, column: String): String {
+        if (column == "*") return "*"
+        if (column.contains(".")) return column
+        return when(relation) {
+            is HasOne -> "${relation.table}.$column"
+            is BelongsTo -> "${relation.table}.$column"
+            is BelongsToMany -> "${relation.table}.$column"
+            else -> "*"
+        }
+    }
+
+    private fun aggregateHasOne(relation: HasOne, function: String, column: String): Builder {
+        val alias = getTableOrAlias()
+        return relation.table(relation.table).selectRaw("$function(${grammar.wrap(column)})")
+            .whereColumn("${relation.table}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
+    }
+
+    private fun aggregateBelongsTo(relation: BelongsTo, function: String, column: String): Builder {
+        val alias = getTableOrAlias()
+        return relation.table(relation.table).selectRaw("$function(${grammar.wrap(column)})")
+            .whereColumn("${relation.table}.${relation.ownerKey}", "=", "$alias.${relation.foreignKey}")
+    }
+
+    private fun aggregateBelongsToMany(relation: BelongsToMany, function: String, column: String): Builder {
+        val alias = getTableOrAlias()
+        return relation.table(relation.table)
+            .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
+            .whereColumn("${relation.pivotTable}.${relation.foreignPivotKey}", "=", "$alias.${relation.localKey}")
+            .selectRaw("$function(${grammar.wrap(column)})")
+    }
+
+    private fun getTableOrAlias(): String {
+        val table = if (from is Expression) {
+            (from as Expression).value as String
+        } else {
+            from as String
+        }
+        return table.split(Regex("\\s+as\\s+", RegexOption.IGNORE_CASE)).last()
+    }
+
+    fun withCount(name: String, relation: Relation, column: String = "*"): Builder {
+        return withAggregate(name, relation, "count", column)
+    }
+
+    fun withSum(name: String, relation: Relation, column: String): Builder {
+        return withAggregate(name, relation, "sum", column)
+    }
+
+    fun withMin(name: String, relation: Relation, column: String): Builder {
+        return withAggregate(name, relation, "min", column)
+    }
+
+    fun withMax(name: String, relation: Relation, column: String): Builder {
+        return withAggregate(name, relation, "max", column)
+    }
+
+    fun withAvg(name: String, relation: Relation, column: String): Builder {
+        return withAggregate(name, relation, "avg", column)
     }
 
     fun getFlattenBindings(): List<Any?> {
@@ -707,8 +783,7 @@ open class Builder: Cloneable {
         if (withes.isNotEmpty()) {
             withes.forEach { (name, map) ->
                 val relation = map["relation"] as Relation
-                val count = map["count"] as Boolean
-                result = resolveRelation(result, name, relation, count)
+                result = resolveRelation(result, name, relation)
             }
         }
         return result
@@ -726,11 +801,11 @@ open class Builder: Cloneable {
         return jsonMapper.readValue(json, jsonMapper.typeFactory.constructCollectionType(List::class.java, klass))
     }
 
-    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean): List<Map<String, Any?>> {
+    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation): List<Map<String, Any?>> {
         return when (relation) {
-            is HasOne -> resolveHashOne(result, name, relation.copy(), count)
-            is BelongsTo -> resolveBelongsTo(result, name, relation.copy(), count)
-            is BelongsToMany -> resolveBelongsToMany(result, name, relation.copy(), count)
+            is HasOne -> resolveHashOne(result, name, relation.copy())
+            is BelongsTo -> resolveBelongsTo(result, name, relation.copy())
+            is BelongsToMany -> resolveBelongsToMany(result, name, relation.copy())
             else -> result
         }
     }
@@ -738,32 +813,19 @@ open class Builder: Cloneable {
     private fun resolveHashOne(
         result: List<Map<String, Any?>>,
         name: String,
-        relation: HasOne,
-        count: Boolean
+        relation: HasOne
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
         relation.table(relation.table).whereIn(relation.foreignKey, keys)
-        if (count) {
-            relation.withes.clear()
-            val data = relation.reorder()
-                .groupBy(relation.foreignKey)
-                .select(Expression("count(*) as aggregate"), relation.foreignKey)
-                .get()
-            result.forEach {
-                it as MutableMap
-                it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
-            }
-        } else {
-            val data = relation.get()
-            result.forEach {
-                it as MutableMap
-                // 通过字符串比较，防止类型不统一造成的不相等
-                if (relation is HasMany) {
-                    it[name] = data.filter { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
-                } else {
-                    it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
-                }
+        val data = relation.get()
+        result.forEach {
+            it as MutableMap
+            // 通过字符串比较，防止类型不统一造成的不相等
+            if (relation is HasMany) {
+                it[name] = data.filter { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
+            } else {
+                it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
             }
         }
         return result
@@ -772,25 +834,15 @@ open class Builder: Cloneable {
     private fun resolveBelongsTo(
         result: List<Map<String, Any?>>,
         name: String,
-        relation: BelongsTo,
-        count: Boolean
+        relation: BelongsTo
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.foreignKey] }.distinct()
         setUpEmptyQuery(relation)
         relation.table(relation.table).whereIn(relation.ownerKey, keys)
-        if (count) {
-            relation.withes.clear()
-            val data = relation.reorder().groupBy(relation.ownerKey).select(Expression("count(*) as aggregate"), relation.ownerKey).get()
-            result.forEach {
-                it as MutableMap
-                it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }?.get("aggregate") ?: 0
-            }
-        } else {
-            val data = relation.get()
-            result.forEach {
-                it as MutableMap
-                it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }
-            }
+        val data = relation.get()
+        result.forEach {
+            it as MutableMap
+            it[name] = data.firstOrNull { datum -> datum[relation.ownerKey].toString() == it[relation.foreignKey].toString() }
         }
         return result
     }
@@ -799,8 +851,7 @@ open class Builder: Cloneable {
     private fun resolveBelongsToMany(
         result: List<Map<String, Any?>>,
         name: String,
-        relation: BelongsToMany,
-        count: Boolean
+        relation: BelongsToMany
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
@@ -808,42 +859,29 @@ open class Builder: Cloneable {
             .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
         relation.wherePivotIn(relation.foreignPivotKey, keys)
 
-        if (count) {
-            relation.withes.clear()
-            val data = relation
-                .reorder()
-                .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, count(*) as aggregate")
-                .groupBy("_pivot_id")
-                .get()
-            result.forEach {
-                it as MutableMap
-                it[name] = data.firstOrNull { datum -> datum["_pivot_id"].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
-            }
-        } else {
-            val data = relation
-                .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, ${relation.table}.*")
-                .get()
-            //中间表数据
-            val newQuery = newQuery()
-            replayBelongsToMany(newQuery, relation)
-            val pivots = newQuery.table(relation.pivotTable).get()
-            result.forEach { res ->
-                res as MutableMap
-                res[name] = data.filter { datum -> datum["_pivot_id"].toString() == res[relation.localKey].toString() }
-                    .map {
-                        it as MutableMap
-                        it["pivot_table"] = pivots.firstOrNull { pivot ->
-                            pivot[relation.foreignPivotKey].toString() == res[relation.localKey].toString() &&
-                                    pivot[relation.relatedPivotKey].toString() == it[relation.relatedKey].toString()
-                        }
-                        it
+        val data = relation
+            .selectRaw("${relation.pivotTable}.${relation.foreignPivotKey} as _pivot_id, ${relation.table}.*")
+            .get()
+        //中间表数据
+        val newQuery = newQuery()
+        replayBelongsToMany(newQuery, relation)
+        val pivots = newQuery.table(relation.pivotTable).get()
+        result.forEach { res ->
+            res as MutableMap
+            res[name] = data.filter { datum -> datum["_pivot_id"].toString() == res[relation.localKey].toString() }
+                .map {
+                    it as MutableMap
+                    it["pivot_table"] = pivots.firstOrNull { pivot ->
+                        pivot[relation.foreignPivotKey].toString() == res[relation.localKey].toString() &&
+                                pivot[relation.relatedPivotKey].toString() == it[relation.relatedKey].toString()
                     }
-            }
-            // 删除 _pivot_id 列，不能在 前面删，否则导致结果异常
-            result.forEach {
-                (it[name] as List<MutableMap<String, Any?>>).forEach { row ->
-                    row.remove("_pivot_id")
+                    it
                 }
+        }
+        // 删除 _pivot_id 列，不能在 前面删，否则导致结果异常
+        result.forEach {
+            (it[name] as List<MutableMap<String, Any?>>).forEach { row ->
+                row.remove("_pivot_id")
             }
         }
         return result
@@ -868,8 +906,10 @@ open class Builder: Cloneable {
     }
 
     private fun setUpEmptyQuery(builder: Builder) {
-        builder.jdbcTemplate = jdbcTemplate
-        builder.grammar = grammar
+        if (builder.jdbcTemplate == null) {
+            builder.jdbcTemplate = jdbcTemplate
+            builder.grammar = grammar
+        }
     }
 
     fun paginate(page: Int = 1, pageSize: Int = 15): Page {
@@ -920,14 +960,14 @@ open class Builder: Cloneable {
                 .setAggregate("count", listOf("*"))
                 .get()
         }
-        return cloneWithout(if (unions.isEmpty()) listOf("columns", "orders", "limit", "offset") else listOf("orders", "limit", "offset"))
+        return cloneWithout(if (unions.isEmpty()) listOf("columns", "orders", "limit", "offset", "withes") else listOf("orders", "limit", "offset", "withes"))
             .cloneWithoutBindings(if (unions.isEmpty()) listOf("select", "order") else listOf("order"))
             .setAggregate("count", listOf("*"))
             .get()
     }
 
     protected fun cloneForPaginationCount(): Builder {
-        return cloneWithout(listOf("orders", "limit", "offset"))
+        return cloneWithout(listOf("orders", "limit", "offset", "withes"))
             .cloneWithoutBindings(listOf("orders"))
     }
 
@@ -1024,6 +1064,7 @@ open class Builder: Cloneable {
                     "limit" -> builder.limit = null
                     "offset" -> builder.offset = null
                     "orders" -> builder.orders = mutableListOf()
+                    "withes" -> builder.withes.clear()
                 }
             }
         }
@@ -1216,7 +1257,7 @@ open class Builder: Cloneable {
             column as String
         }
         val separator = if (columnName.contains(" as ", true)) "\\s+as\\s+" else "\\."
-        return columnName.split(Regex(separator)).last()
+        return columnName.split(Regex(separator, RegexOption.IGNORE_CASE)).last()
     }
 
     protected fun isQueryable(value: Any?): Boolean {
@@ -1352,9 +1393,6 @@ open class Builder: Cloneable {
         builder.havings.addAll(havings)
         builder.orders.addAll(orders)
         builder.unionOrders.addAll(unionOrders)
-        withes.forEach { (name, relation) ->
-            builder.withes[name] = relation
-        }
         aggregate.forEach { (t, u) ->
             builder.aggregate[t] = u
         }
@@ -1362,6 +1400,9 @@ open class Builder: Cloneable {
         builder.columns = columns.map { it } as MutableList
         bindings.forEach { (t, u) ->
             builder.bindings[t] = u.map { it } as MutableList
+        }
+        withes.forEach { (name, relation) ->
+            builder.withes[name] = relation
         }
     }
 

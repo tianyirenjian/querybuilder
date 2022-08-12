@@ -22,7 +22,7 @@ open class BelongsToMany(
     }
 
     open fun orWherePivot(column: String, operator: String? = null, value: Any? = null): BelongsToMany {
-        return wherePivot(qualifyPivotColumn(column), operator, value, "or") as BelongsToMany
+        return wherePivot(qualifyPivotColumn(column), operator, value, "or")
     }
 
     open fun wherePivotBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): BelongsToMany {
