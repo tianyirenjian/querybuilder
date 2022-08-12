@@ -10,6 +10,6 @@ class MysqlGrammar: Grammar() {
     }
 
     override fun compileRandom(seed: String): String {
-        return "rand()"
+        return "rand($seed)"
     }
 }

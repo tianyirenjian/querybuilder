@@ -4,8 +4,6 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tianyisoft.database.exceptions.InvalidArgumentException
 import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
-import com.tianyisoft.database.processor.MySqlProcessor
-import com.tianyisoft.database.processor.Processor
 import com.tianyisoft.database.relations.*
 import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
@@ -47,7 +45,6 @@ open class Builder: Cloneable {
 
     var jdbcTemplate:JdbcTemplate? = null
     var grammar: Grammar = MysqlGrammar()
-    var processor: Processor = MySqlProcessor()
 
     init {
         listOf("select", "from", "join", "where", "groupBy", "having", "order", "union", "unionOrder").forEach {
@@ -420,7 +417,6 @@ open class Builder: Cloneable {
         val builder =  Builder()
         builder.jdbcTemplate = jdbcTemplate
         builder.grammar = grammar
-        builder.processor = processor
         return builder
     }
 
@@ -707,7 +703,7 @@ open class Builder: Cloneable {
 
     @Suppress("UNCHECKED_CAST")
     fun get(): List<Map<String, Any?>> {
-        var result = this.processor.processSelect(this, runSelect<List<*>>()) as List<Map<String, Any?>>
+        var result = runSelect<List<*>>() as List<Map<String, Any?>>
         if (withes.isNotEmpty()) {
             withes.forEach { (name, map) ->
                 val relation = map["relation"] as Relation
@@ -720,7 +716,7 @@ open class Builder: Cloneable {
 
     @Suppress("UNCHECKED_CAST")
     fun <T : Any> get(rowMapper: RowMapper<T>): List<T> {
-        return this.processor.processSelect(this, runSelect<T>(rowMapper)) as List<T>
+        return runSelect<T>(rowMapper) as List<T>
     }
 
     fun <T : Any> get(klass: Class<T>): List<T> {
@@ -732,9 +728,9 @@ open class Builder: Cloneable {
 
     private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation, count: Boolean): List<Map<String, Any?>> {
         return when (relation) {
-            is HasOne -> resolveHashOne(result, name, relation, count)
-            is BelongsTo -> resolveBelongsTo(result, name, relation, count)
-            is BelongsToMany -> resolveBelongsToMany(result, name, relation, count)
+            is HasOne -> resolveHashOne(result, name, relation.copy(), count)
+            is BelongsTo -> resolveBelongsTo(result, name, relation.copy(), count)
+            is BelongsToMany -> resolveBelongsToMany(result, name, relation.copy(), count)
             else -> result
         }
     }
@@ -750,7 +746,10 @@ open class Builder: Cloneable {
         relation.table(relation.table).whereIn(relation.foreignKey, keys)
         if (count) {
             relation.withes.clear()
-            val data = relation.reorder().groupBy(relation.foreignKey).select(Expression("count(*) as aggregate"), relation.foreignKey).get()
+            val data = relation.reorder()
+                .groupBy(relation.foreignKey)
+                .select(Expression("count(*) as aggregate"), relation.foreignKey)
+                .get()
             result.forEach {
                 it as MutableMap
                 it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }?.get("aggregate") ?: 0
@@ -871,7 +870,6 @@ open class Builder: Cloneable {
     private fun setUpEmptyQuery(builder: Builder) {
         builder.jdbcTemplate = jdbcTemplate
         builder.grammar = grammar
-        builder.processor = processor
     }
 
     fun paginate(page: Int = 1, pageSize: Int = 15): Page {
@@ -1335,9 +1333,13 @@ open class Builder: Cloneable {
 
     public override fun clone(): Any {
         val builder = Builder()
+        copyAttributes(builder)
+        return builder
+    }
+
+    protected open fun copyAttributes(builder: Builder) {
         builder.jdbcTemplate = jdbcTemplate
         builder.grammar = grammar
-        builder.processor = processor
         builder.from = from
         builder.limit = limit
         builder.unionLimit = unionLimit
@@ -1350,6 +1352,9 @@ open class Builder: Cloneable {
         builder.havings.addAll(havings)
         builder.orders.addAll(orders)
         builder.unionOrders.addAll(unionOrders)
+        withes.forEach { (name, relation) ->
+            builder.withes[name] = relation
+        }
         aggregate.forEach { (t, u) ->
             builder.aggregate[t] = u
         }
@@ -1358,10 +1363,9 @@ open class Builder: Cloneable {
         bindings.forEach { (t, u) ->
             builder.bindings[t] = u.map { it } as MutableList
         }
-        return builder
     }
 
-    fun copy(): Builder {
+    open fun copy(): Builder {
         return clone() as Builder
     }
 }

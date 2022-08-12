@@ -87,4 +87,19 @@ open class BelongsToMany(
         }
         return "$pivotTable.$column"
     }
+
+    override fun clone(): Any {
+        val belongsToMany = BelongsToMany(table, pivotTable, foreignPivotKey, relatedPivotKey, localKey, relatedKey)
+        copyAttributes(belongsToMany)
+        belongsToMany.wherePivots.addAll(wherePivots)
+        belongsToMany.wherePivotBetweens.addAll(wherePivotBetweens)
+        belongsToMany.wherePivotNulls.addAll(wherePivotNulls)
+        belongsToMany.wherePivotIns.addAll(wherePivotIns)
+        belongsToMany.orderBys.addAll(orderBys)
+        return belongsToMany
+    }
+
+    override fun copy(): BelongsToMany {
+        return clone() as BelongsToMany
+    }
 }
