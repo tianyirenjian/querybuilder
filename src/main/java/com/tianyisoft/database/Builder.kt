@@ -228,6 +228,14 @@ open class Builder: Cloneable {
 
     fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
 
+    fun whereNot(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
+        return where(column, operator, value, "$boolean not")
+    }
+
+    fun orWhereNot(column: Any, operator: String? = null, value: Any? = null): Builder {
+        return whereNot(column, operator, value, "or")
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun whereColumn(first: Any, operator: String? = null, second: String? = null, boolean: String = "and"): Builder {
         if (first is List<*>) {
