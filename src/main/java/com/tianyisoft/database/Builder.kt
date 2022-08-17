@@ -424,6 +424,30 @@ open class Builder: Cloneable {
         return this
     }
 
+    fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
+        if (canUserExists(operator, count)) {
+            val sub = buildRelationExistsSub(relation)
+            addWhereExistsQuery(sub, boolean, operator == "<" && count == 1)
+        } else {
+            val sub = buildRelationCountQuery(relation)
+            where(sub, operator, count, boolean)
+        }
+        return this
+    }
+
+    fun orWhereHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder =
+        whereHas(relation, operator, count, "or")
+
+    private fun buildRelationCountQuery(relation: Relation): Builder =
+        relationBuilder(relation).selectRaw("count(*)")
+
+    private fun buildRelationExistsSub(relation: Relation): Builder =
+        relationBuilder(relation).selectRaw("1")
+
+    private fun canUserExists(operator: String, count: Int): Boolean {
+        return (operator == ">=" || operator == "<") && count == 1
+    }
+
     protected open fun forSubQuery(): Builder {
         return newQuery()
     }
@@ -679,14 +703,18 @@ open class Builder: Cloneable {
     }
 
     private fun buildAggregateSub(relation: Relation, function: String, column: String): Builder {
-        val builder = relation as Builder
-        setUpEmptyQuery(builder)
-        builder.withes.clear()
+        return relationBuilder(relation).selectRaw("$function(${grammar.wrap(column)})")
+    }
+
+    private fun relationBuilder(relation: Relation): Builder {
+        relation as Builder
+        setUpEmptyQuery(relation)
+        relation.withes.clear()
         return when(relation) {
-            is HasOne -> aggregateHasOne(relation, function, aggregateColumn(relation, column))
-            is BelongsTo -> aggregateBelongsTo(relation, function, aggregateColumn(relation, column))
-            is BelongsToMany -> aggregateBelongsToMany(relation, function, aggregateColumn(relation, column))
-            else -> relation
+            is HasOne -> hasOneBuilder(relation.copy())
+            is BelongsTo -> belongsToBuilder(relation.copy())
+            is BelongsToMany -> belongsToManyBuilder(relation.copy())
+            else -> relation.copy()
         }
     }
 
@@ -701,24 +729,23 @@ open class Builder: Cloneable {
         }
     }
 
-    private fun aggregateHasOne(relation: HasOne, function: String, column: String): Builder {
+    private fun hasOneBuilder(relation: HasOne): Builder {
         val alias = getTableOrAlias()
-        return relation.table(relation.table).selectRaw("$function(${grammar.wrap(column)})")
+        return relation.table(relation.table)
             .whereColumn("${relation.table}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
     }
 
-    private fun aggregateBelongsTo(relation: BelongsTo, function: String, column: String): Builder {
+    private fun belongsToBuilder(relation: BelongsTo): Builder {
         val alias = getTableOrAlias()
-        return relation.table(relation.table).selectRaw("$function(${grammar.wrap(column)})")
+        return relation.table(relation.table)
             .whereColumn("${relation.table}.${relation.ownerKey}", "=", "$alias.${relation.foreignKey}")
     }
 
-    private fun aggregateBelongsToMany(relation: BelongsToMany, function: String, column: String): Builder {
+    private fun belongsToManyBuilder(relation: BelongsToMany): Builder {
         val alias = getTableOrAlias()
         return relation.table(relation.table)
             .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
             .whereColumn("${relation.pivotTable}.${relation.foreignPivotKey}", "=", "$alias.${relation.localKey}")
-            .selectRaw("$function(${grammar.wrap(column)})")
     }
 
     private fun getTableOrAlias(): String {
