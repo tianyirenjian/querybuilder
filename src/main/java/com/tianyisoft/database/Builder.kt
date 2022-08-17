@@ -427,7 +427,8 @@ open class Builder: Cloneable {
     fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
         if (canUserExists(operator, count)) {
             val sub = buildRelationExistsSub(relation)
-            addWhereExistsQuery(sub, boolean, operator == "<" && count == 1)
+            val not = (operator == "<" && (count == 1 || count == 0)) || (operator == "<=" && count == 0) || (operator == "=" && count == 0)
+            addWhereExistsQuery(sub, boolean, not)
         } else {
             val sub = buildRelationCountQuery(relation)
             where(sub, operator, count, boolean)
