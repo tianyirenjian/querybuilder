@@ -274,7 +274,11 @@ open class Grammar {
         return values.joinToString(", ") { parameter(it) }
     }
 
-    fun wrap(value: Any?): String? {
+    open fun ifnull(sql: String, default: Any): String {
+        return "ifnull($sql, $default)"
+    }
+
+    open fun wrap(value: Any?): String? {
         if (value == null) {
             return null
         }

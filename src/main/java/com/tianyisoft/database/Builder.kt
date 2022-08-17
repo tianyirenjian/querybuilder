@@ -704,7 +704,7 @@ open class Builder: Cloneable {
     }
 
     private fun buildAggregateSub(relation: Relation, function: String, column: String): Builder {
-        return relationBuilder(relation).selectRaw("$function(${grammar.wrap(column)})")
+        return relationBuilder(relation).selectRaw(grammar.ifnull("$function(${grammar.wrap(column)})", 0))
     }
 
     private fun relationBuilder(relation: Relation): Builder {
