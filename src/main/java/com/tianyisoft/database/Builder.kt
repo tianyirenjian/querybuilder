@@ -2,6 +2,8 @@ package com.tianyisoft.database
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tianyisoft.database.exceptions.InvalidArgumentException
+import com.tianyisoft.database.exceptions.MultipleRecordsFoundException
+import com.tianyisoft.database.exceptions.RecordsNotFoundException
 import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
 import com.tianyisoft.database.relations.*
@@ -1154,6 +1156,31 @@ open class Builder: Cloneable {
 
     fun <T: Any> find(id: Any, klass: Class<T>): T? {
         return where("id", "=", id).first(klass)
+    }
+
+    fun sole(): Map<String, Any?> {
+        val records = take(2).get()
+        return getSole(records)
+    }
+
+    fun <T: Any> sole(rowMapper: RowMapper<T>): T {
+        val records = take(2).get(rowMapper)
+        return getSole(records)
+    }
+
+    fun <T: Any> sole(klass: Class<T>): T {
+        val records = take(2).get(klass)
+        return getSole(records)
+    }
+
+    private fun <T: Any> getSole(records: List<T>): T {
+        if (records.isEmpty()) {
+            throw RecordsNotFoundException()
+        }
+        if (records.size > 1) {
+            throw MultipleRecordsFoundException(records.size)
+        }
+        return records.first()
     }
 
     fun value(column: String): Any? {
