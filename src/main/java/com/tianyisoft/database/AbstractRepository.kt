@@ -36,12 +36,9 @@ abstract class AbstractRepository {
         return query().delete(id)
     }
 
-    open fun query(alias: String?): Builder {
+    @JvmOverloads
+    open fun query(alias: String? = null): Builder {
         return builder().table(table, alias)
-    }
-
-    open fun query(): Builder {
-        return builder().table(table)
     }
 
     open fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
