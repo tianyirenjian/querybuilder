@@ -3,7 +3,7 @@ package com.tianyisoft.database
 import com.tianyisoft.database.grammar.Grammar
 import org.springframework.jdbc.core.JdbcTemplate
 
-class JoinClause(): Builder() {
+open class JoinClause(): Builder() {
     lateinit var type: String
     lateinit var table: Any
     lateinit var parentJdbcTemplate: JdbcTemplate
@@ -20,24 +20,24 @@ class JoinClause(): Builder() {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun on(firstOrClosure: Any, operator: String? = null, second: String? = null, boolean: String = "and"): JoinClause {
+    open fun on(firstOrClosure: Any, operator: String? = null, second: String? = null, boolean: String = "and"): JoinClause {
         if (firstOrClosure is Function1<*, *>) {
             return whereNested(firstOrClosure as Function1<Builder, Unit>, boolean) as JoinClause
         }
         return this.whereColumn(firstOrClosure as String, operator, second, boolean) as JoinClause
     }
 
-    fun orOn(firstOrClosure: Any, operator: String? = null, second: String? = null) = on(firstOrClosure, operator, second, "or")
+    open fun orOn(firstOrClosure: Any, operator: String? = null, second: String? = null) = on(firstOrClosure, operator, second, "or")
 
     override fun newQuery(): JoinClause {
         return JoinClause(newParentQuery(), type, table)
     }
 
-    protected override fun forSubQuery(): Builder {
+    override fun forSubQuery(): Builder {
         return newParentQuery().newQuery()
     }
 
-    protected fun newParentQuery(): Builder {
+    protected open fun newParentQuery(): Builder {
         val builder = Builder()
         builder.jdbcTemplate = parentJdbcTemplate
         builder.grammar = parentGrammar

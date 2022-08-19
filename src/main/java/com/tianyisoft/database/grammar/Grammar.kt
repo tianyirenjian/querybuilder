@@ -11,7 +11,7 @@ import kotlin.reflect.jvm.isAccessible
 
 open class Grammar {
 
-    public open val operators = listOf<String>()
+    open val operators = listOf<String>()
 
     protected var selectComponents = listOf(
         "aggregate",
@@ -26,7 +26,7 @@ open class Grammar {
         "offset"
     )
 
-    public fun compileSelect(query: Builder): String {
+    open fun compileSelect(query: Builder): String {
         if (query.unions.isNotEmpty() && query.aggregate.isNotEmpty()) {
             return compileUnionAggregate(query)
         }
@@ -119,7 +119,7 @@ open class Grammar {
         return "offset " + value as Int
     }
 
-    private fun compileWheresToList(query: Builder): List<String> {
+    protected open fun compileWheresToList(query: Builder): List<String> {
         return query.wheres.map {
             val method = "where" + it["type"]
             val function = this::class.memberFunctions.first { f -> f.name == method }
@@ -128,12 +128,12 @@ open class Grammar {
         }
     }
 
-    private fun concatenateWhereClauses(query: Builder, sql: List<String>): String {
+    protected open fun concatenateWhereClauses(query: Builder, sql: List<String>): String {
         val conjunction = if(query is JoinClause) "on" else "where"
         return conjunction + " " + removeLeadingBoolean(sql.joinToString(" "))
     }
 
-    private fun removeLeadingBoolean(sql: String): String {
+    protected open fun removeLeadingBoolean(sql: String): String {
         return sql.replaceFirst(Regex("and |or ", RegexOption.IGNORE_CASE), "")
     }
 
@@ -187,7 +187,7 @@ open class Grammar {
     protected open fun whereMonth(query: Builder, where: Map<String, Any?>) = dateBasedWhere("month", query, where)
     protected open fun whereYear(query: Builder, where: Map<String, Any?>) = dateBasedWhere("year", query, where)
 
-    private fun dateBasedWhere(format: String, query: Builder, where: Map<String, Any?>): String {
+    protected open fun dateBasedWhere(format: String, query: Builder, where: Map<String, Any?>): String {
         return "$format(${wrap(where["column"])}) ${where["operator"]} ${parameter(where["value"])}"
     }
 
@@ -223,7 +223,7 @@ open class Grammar {
         return "having " + removeLeadingBoolean(sql)
     }
 
-    private fun compileHaving(having: Map<String, Any?>): String {
+    protected open fun compileHaving(having: Map<String, Any?>): String {
         return when(having["type"]) {
             "Raw" ->  "${having["boolean"]} ${having["sql"]}"
             "Between" -> compileHavingBetween(having)
@@ -248,7 +248,7 @@ open class Grammar {
         return ""
     }
 
-    private fun compileOrdersToList(query: Builder, orders: List<Map<String, Any?>>): List<String> {
+    protected open fun compileOrdersToList(query: Builder, orders: List<Map<String, Any?>>): List<String> {
         return orders.map {
             if (it.containsKey("sql")) {
                 it["sql"] as String
@@ -431,7 +431,7 @@ open class Grammar {
         }
     }
 
-    private fun compileDeleteWithJoins(builder: Builder, table: String, where: String): String {
+    protected open fun compileDeleteWithJoins(builder: Builder, table: String, where: String): String {
         val alias = table.split(" as ").last()
         val joins = compileJoins(builder, builder.joins)
         return "delete $alias from $table $joins $where"
@@ -441,14 +441,14 @@ open class Grammar {
         return "delete from $table $where"
     }
 
-    fun prepareBindingsForDelete(bindings: Map<String, List<Any?>>): List<Any?> {
+    open fun prepareBindingsForDelete(bindings: Map<String, List<Any?>>): List<Any?> {
         val cleanBindings = bindings.toMap()
         cleanBindings as MutableMap
         cleanBindings.remove("select")
         return flatten(cleanBindings)
     }
 
-    fun compileTruncate(builder: Builder): Map<String, List<Any?>> {
+    open fun compileTruncate(builder: Builder): Map<String, List<Any?>> {
         return hashMapOf("truncate table ${wrapTable(builder.from!!)}" to listOf())
     }
 }

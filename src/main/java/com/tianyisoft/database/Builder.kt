@@ -54,39 +54,39 @@ open class Builder: Cloneable {
         }
     }
 
-    fun select(vararg fields: Any): Builder {
+    open fun select(vararg fields: Any): Builder {
         columns = if (fields.isEmpty()) mutableListOf("*") else fields.toMutableList()
         bindings["select"] = mutableListOf()
         return this
     }
 
     @JvmOverloads
-    fun selectRaw(fields: String, bindings: List<Any?> = listOf()): Builder {
+    open fun selectRaw(fields: String, bindings: List<Any?> = listOf()): Builder {
         columns.add(Expression(fields))
         addBinding(bindings, "select")
         return this
     }
 
-    fun addSelect(vararg fields: Any): Builder {
+    open fun addSelect(vararg fields: Any): Builder {
         fields.forEach {
             columns.add(it)
         }
         return this
     }
 
-    fun selectSub(queryOrClosure: Any, alias: String): Builder {
+    open fun selectSub(queryOrClosure: Any, alias: String): Builder {
         val sub = createSub(queryOrClosure)
         return selectRaw("(${sub.first}) as ${grammar.wrapTable(alias)}", sub.second)
     }
 
     @JvmOverloads
-    fun distinct(boolean: Boolean = true): Builder {
+    open fun distinct(boolean: Boolean = true): Builder {
         distinct = boolean
         return this
     }
 
     @JvmOverloads
-    fun from(table: Any?, alias: String? = null): Builder {
+    open fun from(table: Any?, alias: String? = null): Builder {
         if (table is Builder || table is Function1<*, *>) {
             if (alias == null) {
                 throw InvalidArgumentException("alias must not be null")
@@ -98,23 +98,23 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun table(table: String, alias: String? = null): Builder {
+    open fun table(table: String, alias: String? = null): Builder {
         return from(table, alias)
     }
 
     @JvmOverloads
-    fun fromRaw(expression: String, bindings: List<Any?> = listOf()): Builder {
+    open fun fromRaw(expression: String, bindings: List<Any?> = listOf()): Builder {
         from = Expression(expression)
         addBinding(bindings, "from")
         return this
     }
-    fun fromSub(queryOrClosure: Any, alias: String): Builder {
+    open fun fromSub(queryOrClosure: Any, alias: String): Builder {
         val sub = createSub(queryOrClosure)
         return fromRaw("(${sub.first}) as ${grammar.wrapTable(alias)}", sub.second)
     }
 
     @Suppress("UNCHECKED_CAST")
-    protected fun createSub(queryOrClosure: Any): Pair<String, List<Any?>> {
+    protected open fun createSub(queryOrClosure: Any): Pair<String, List<Any?>> {
         var query = queryOrClosure
         if (queryOrClosure is Function1<*, *>) {
             queryOrClosure as Function1<Builder, Unit>
@@ -124,7 +124,7 @@ open class Builder: Cloneable {
         return parseSub(query)
     }
 
-    protected fun parseSub(query: Any): Pair<String, List<Any?>> {
+    protected open fun parseSub(query: Any): Pair<String, List<Any?>> {
         return when (query) {
             is Builder -> Pair(query.toSql(), query.getFlattenBindings())
             is String -> Pair(query, listOf())
@@ -134,7 +134,7 @@ open class Builder: Cloneable {
 
     @JvmOverloads
     @Suppress("UNCHECKED_CAST")
-    fun join(table: Any, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner", where: Boolean = false): Builder {
+    open fun join(table: Any, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner", where: Boolean = false): Builder {
         val join = newJoinClause(this, type, table)
         if (firstOrClosure is Function1<*, *>) {
             firstOrClosure as Function1<JoinClause, Unit>
@@ -153,11 +153,11 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun joinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner") =
+    open fun joinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner") =
         join(table, firstOrClosure, operator, second, type, true)
 
     @JvmOverloads
-    fun joinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner", where: Boolean = false): Builder {
+    open fun joinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null, type: String = "inner", where: Boolean = false): Builder {
         val sub = createSub(queryOrClosure)
         val expression = Expression("(${sub.first}) as ${grammar.wrapTable(alias)}")
         addBinding(sub.second, "join")
@@ -165,49 +165,49 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun leftJoin(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
+    open fun leftJoin(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
         return join(table, firstOrClosure, operator, second, "left")
     }
 
     @JvmOverloads
-    fun leftJoinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
+    open fun leftJoinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
         return joinWhere(table, firstOrClosure, operator, second, "left")
     }
 
     @JvmOverloads
-    fun leftJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
+    open fun leftJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
         joinSub(queryOrClosure, alias, firstOrClosure, operator, second, "left")
 
     @JvmOverloads
-    fun rightJoin(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
+    open fun rightJoin(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
         return join(table, firstOrClosure, operator, second, "right")
     }
 
     @JvmOverloads
-    fun rightJoinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
+    open fun rightJoinWhere(table: String, firstOrClosure: Any, operator: String? = null, second: String? = null): Builder {
         return joinWhere(table, firstOrClosure, operator, second, "right")
     }
 
     @JvmOverloads
-    fun rightJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
+    open fun rightJoinSub(queryOrClosure: Any, alias: String, firstOrClosure: Any, operator: String? = null, second: String? = null) =
         joinSub(queryOrClosure, alias, firstOrClosure, operator, second, "right")
 
 
     @JvmOverloads
-    fun crossJoin(table: String, firstOrClosure: Any? = null, operator: String? = null, second: String? = null): Builder {
+    open fun crossJoin(table: String, firstOrClosure: Any? = null, operator: String? = null, second: String? = null): Builder {
         if (firstOrClosure != null) {
             return join(table, firstOrClosure, operator!!, second!!, "cross")
         }
         joins.add(newJoinClause(this, "cross", table))
         return this
     }
-    protected fun newJoinClause(query: Builder, type: String, table: Any): JoinClause {
+    protected open fun newJoinClause(query: Builder, type: String, table: Any): JoinClause {
         return JoinClause(query, type, table)
     }
 
     @JvmOverloads
     @Suppress("UNCHECKED_CAST")
-    fun where(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
+    open fun where(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
         if (column is List<*>) {
             return addListOfWheres(column as List<List<Any?>>, boolean)
         }
@@ -245,21 +245,21 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
+    open fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
 
     @JvmOverloads
-    fun whereNot(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
+    open fun whereNot(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
         return where(column, operator, value, "$boolean not")
     }
 
     @JvmOverloads
-    fun orWhereNot(column: Any, operator: String? = null, value: Any? = null): Builder {
+    open fun orWhereNot(column: Any, operator: String? = null, value: Any? = null): Builder {
         return whereNot(column, operator, value, "or")
     }
 
     @JvmOverloads
     @Suppress("UNCHECKED_CAST")
-    fun whereColumn(first: Any, operator: String? = null, second: String? = null, boolean: String = "and"): Builder {
+    open fun whereColumn(first: Any, operator: String? = null, second: String? = null, boolean: String = "and"): Builder {
         if (first is List<*>) {
             return this.addListOfWheres(first as List<List<Any?>>, boolean, "whereColumn")
         }
@@ -277,10 +277,10 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun orWhereColumn(first: String, operator: String, second: String) = whereColumn(first, operator, second, "or")
+    open fun orWhereColumn(first: String, operator: String, second: String) = whereColumn(first, operator, second, "or")
 
     @JvmOverloads
-    fun whereNull(columns: Any, boolean: String = "and", not: Boolean = false): Builder {
+    open fun whereNull(columns: Any, boolean: String = "and", not: Boolean = false): Builder {
         if (columns !is String && columns !is List<*> && columns !is Array<*> && columns !is Set<*>) {
             throw InvalidArgumentException("columns must be String or List<String> or Array<String> or Set<String")
         }
@@ -295,12 +295,12 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereNotNull(column: String, boolean: String = "and") = whereNull(column, boolean, true)
-    fun orWhereNull(column: String) = whereNull(column, "or")
-    fun orWhereNotNull(column: String) = whereNotNull(column, "or")
+    open fun whereNotNull(column: String, boolean: String = "and") = whereNull(column, boolean, true)
+    open fun orWhereNull(column: String) = whereNull(column, "or")
+    open fun orWhereNotNull(column: String) = whereNotNull(column, "or")
 
     @JvmOverloads
-    fun whereRaw(sql: String, bindings: List<Any?>, boolean: String = "and"): Builder {
+    open fun whereRaw(sql: String, bindings: List<Any?>, boolean: String = "and"): Builder {
         wheres.add(hashMapOf(
             "type" to "Raw",
             "sql" to sql,
@@ -310,10 +310,10 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun orWhereRaw(sql: String, bindings: List<Any?>) = whereRaw(sql, bindings, "or")
+    open fun orWhereRaw(sql: String, bindings: List<Any?>) = whereRaw(sql, bindings, "or")
 
     @JvmOverloads
-    fun whereIn(column: String, values: Any, boolean: String = "and", not: Boolean = false): Builder {
+    open fun whereIn(column: String, values: Any, boolean: String = "and", not: Boolean = false): Builder {
         var realValues = values
         if (values is Builder || values is Function1<*, *>) {
             val sub = createSub(values)
@@ -335,12 +335,12 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereNotIn(column: String, values: List<Any?>, boolean: String = "and") = whereIn(column, values, boolean, true)
-    fun orWhereIn(column: String, values: List<Any?>) = whereIn(column, values, "or")
-    fun orWhereNotIn(column: String, values: List<Any?>) = whereNotIn(column, values, "or")
+    open fun whereNotIn(column: String, values: List<Any?>, boolean: String = "and") = whereIn(column, values, boolean, true)
+    open fun orWhereIn(column: String, values: List<Any?>) = whereIn(column, values, "or")
+    open fun orWhereNotIn(column: String, values: List<Any?>) = whereNotIn(column, values, "or")
 
     @JvmOverloads
-    fun whereBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {
+    open fun whereBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {
         wheres.add(hashMapOf(
             "type" to "Between",
             "column" to column,
@@ -353,12 +353,12 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereNotBetween(column: String, values: List<Any?>, boolean: String = "and") = whereBetween(column, values, boolean, true)
-    fun orWhereBetween(column: String, values: List<Any?>) = whereBetween(column, values, "or")
-    fun orWhereNotBetween(column: String, values: List<Any?>) = whereNotBetween(column, values, "or")
+    open fun whereNotBetween(column: String, values: List<Any?>, boolean: String = "and") = whereBetween(column, values, boolean, true)
+    open fun orWhereBetween(column: String, values: List<Any?>) = whereBetween(column, values, "or")
+    open fun orWhereNotBetween(column: String, values: List<Any?>) = whereNotBetween(column, values, "or")
 
     @JvmOverloads
-    fun whereBetweenColumns(column: String, values: List<String>, boolean: String = "and", not: Boolean = false): Builder {
+    open fun whereBetweenColumns(column: String, values: List<String>, boolean: String = "and", not: Boolean = false): Builder {
         wheres.add(hashMapOf(
             "type" to "BetweenColumns",
             "column" to column,
@@ -370,20 +370,20 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereDate(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereDate(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         return addDateBasedWhere("Date", column, operator, value, boolean)
     }
-    fun orWhereDate(column: String, operator: String, value: Any?) = whereDate(column, operator, value, "or")
+    open fun orWhereDate(column: String, operator: String, value: Any?) = whereDate(column, operator, value, "or")
 
     @JvmOverloads
-    fun whereTime(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereTime(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         return addDateBasedWhere("Time", column, operator, value, boolean)
     }
 
-    fun orWhereTime(column: String, operator: String, value: Any?) = whereTime(column, operator, value, "or")
+    open fun orWhereTime(column: String, operator: String, value: Any?) = whereTime(column, operator, value, "or")
 
     @JvmOverloads
-    fun whereDay(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereDay(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         var value2 = value
         if (value !is Expression) {
             value2 = value?.toString()?.padStart(2, '0')
@@ -391,10 +391,10 @@ open class Builder: Cloneable {
         return addDateBasedWhere("Day", column, operator, value2, boolean)
     }
 
-    fun orWhereDay(column: String, operator: String, value: Any?) = whereDay(column, operator, value, "or")
+    open fun orWhereDay(column: String, operator: String, value: Any?) = whereDay(column, operator, value, "or")
 
     @JvmOverloads
-    fun whereMonth(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereMonth(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         var value2 = value
         if (value !is Expression) {
             value2 = value?.toString()?.padStart(2, '0')
@@ -402,16 +402,16 @@ open class Builder: Cloneable {
         return addDateBasedWhere("Month", column, operator, value2, boolean)
     }
 
-    fun orWhereMonth(column: String, operator: String, value: Any?) = whereMonth(column, operator, value, "or")
+    open fun orWhereMonth(column: String, operator: String, value: Any?) = whereMonth(column, operator, value, "or")
 
     @JvmOverloads
-    fun whereYear(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereYear(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         return addDateBasedWhere("Year", column, operator, value, boolean)
     }
 
-    fun orWhereYear(column: String, operator: String, value: Any?) = whereYear(column, operator, value, "or")
+    open fun orWhereYear(column: String, operator: String, value: Any?) = whereYear(column, operator, value, "or")
 
-    protected fun addDateBasedWhere(type: String, column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    protected open fun addDateBasedWhere(type: String, column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         wheres.add(hashMapOf(
             "type" to type,
             "column" to column,
@@ -425,7 +425,7 @@ open class Builder: Cloneable {
         return this
     }
 
-    protected fun whereSub(column: String, operator: String?, sub: (Builder) -> Unit, boolean: String = "and"): Builder {
+    protected open fun whereSub(column: String, operator: String?, sub: (Builder) -> Unit, boolean: String = "and"): Builder {
         val query = forSubQuery()
         sub(query)
         wheres.add(hashMapOf(
@@ -440,18 +440,18 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereExists(callback: (Builder) -> Unit, boolean: String = "and", not: Boolean = false): Builder {
+    open fun whereExists(callback: (Builder) -> Unit, boolean: String = "and", not: Boolean = false): Builder {
         val query = forSubQuery()
         callback(query)
         return addWhereExistsQuery(query, boolean, not)
     }
 
     @JvmOverloads
-    fun whereNotExists(callback: (Builder) -> Unit, boolean: String = "and") = whereExists(callback, boolean, true)
-    fun orWhereExists(callback: (Builder) -> Unit, not: Boolean = false) = whereExists(callback, "or", not)
-    fun orWhereNotExists(callback: (Builder) -> Unit) = whereNotExists(callback, "or")
+    open fun whereNotExists(callback: (Builder) -> Unit, boolean: String = "and") = whereExists(callback, boolean, true)
+    open fun orWhereExists(callback: (Builder) -> Unit, not: Boolean = false) = whereExists(callback, "or", not)
+    open fun orWhereNotExists(callback: (Builder) -> Unit) = whereNotExists(callback, "or")
 
-    protected fun addWhereExistsQuery(query: Builder, boolean: String = "and", not: Boolean = false): Builder {
+    protected open fun addWhereExistsQuery(query: Builder, boolean: String = "and", not: Boolean = false): Builder {
         wheres.add(hashMapOf(
             "type" to if (not) "NotExists" else "Exists",
             "query" to query,
@@ -462,7 +462,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
+    open fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
         if (canUserExists(operator, count)) {
             val sub = buildRelationExistsSub(relation)
             val not = (operator == "<" && (count == 1 || count == 0)) || (operator == "<=" && count == 0) || (operator == "=" && count == 0)
@@ -475,16 +475,16 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun orWhereHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder =
+    open fun orWhereHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder =
         whereHas(relation, operator, count, "or")
 
-    private fun buildRelationCountQuery(relation: Relation): Builder =
+    protected open fun buildRelationCountQuery(relation: Relation): Builder =
         relationBuilder(relation).selectRaw("count(*)")
 
-    private fun buildRelationExistsSub(relation: Relation): Builder =
+    protected open fun buildRelationExistsSub(relation: Relation): Builder =
         relationBuilder(relation).selectRaw("1")
 
-    private fun canUserExists(operator: String, count: Int): Boolean {
+    protected open fun canUserExists(operator: String, count: Int): Boolean {
         return (operator == ">=" || operator == "<") && count == 1
     }
 
@@ -499,13 +499,13 @@ open class Builder: Cloneable {
         return builder
     }
 
-    protected fun addMapOfWheres(column: Map<String, Any?>, boolean: String, method: String = "where"): Builder {
+    protected open fun addMapOfWheres(column: Map<String, Any?>, boolean: String, method: String = "where"): Builder {
         return whereNested({
             column.forEach { (c, v) -> it::class.memberFunctions.first { f -> f.name == method && f.parameters.size == 5 }.call(it, c, "=", v, boolean) }
         }, boolean)
     }
 
-    protected fun addListOfWheres(column: List<List<Any?>>, boolean: String, method: String = "where"): Builder {
+    protected open fun addListOfWheres(column: List<List<Any?>>, boolean: String, method: String = "where"): Builder {
         return whereNested({
             val whereFunction = it::class.memberFunctions.first { f -> f.name == method && f.parameters.size == 5 }
             column.forEach{ l ->
@@ -520,13 +520,13 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun whereNested(callback: (Builder) -> Unit, boolean: String = "and"): Builder {
+    open fun whereNested(callback: (Builder) -> Unit, boolean: String = "and"): Builder {
         val query = forNestedWhere()
         callback(query)
         return addNestedWhereQuery(query, boolean)
     }
 
-    protected fun addNestedWhereQuery(query: Builder, boolean: String): Builder {
+    protected open fun addNestedWhereQuery(query: Builder, boolean: String): Builder {
         if (query.wheres.isNotEmpty()) {
             wheres.add(hashMapOf(
                 "type" to "Nested",
@@ -538,20 +538,20 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun groupBy(vararg groups: String): Builder {
+    open fun groupBy(vararg groups: String): Builder {
         this.groups.addAll(groups)
         return this
     }
 
     @JvmOverloads
-    fun groupByRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
+    open fun groupByRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
         this.groups.add(Expression(sql))
         addBinding(bindings, "groupBy")
         return this
     }
 
     @JvmOverloads
-    fun having(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun having(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         havings.add(hashMapOf(
             "type" to "Basic",
             "column" to column,
@@ -565,12 +565,12 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun orHaving(column: String, operator: String, value: Any?): Builder {
+    open fun orHaving(column: String, operator: String, value: Any?): Builder {
         return having(column, operator, value, "or")
     }
 
     @JvmOverloads
-    fun havingBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {
+    open fun havingBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {
         havings.add(hashMapOf(
             "type" to "Between",
             "column" to column,
@@ -583,7 +583,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun havingRaw(sql: String, bindings: List<Any?> = listOf(), boolean: String = "and"): Builder {
+    open fun havingRaw(sql: String, bindings: List<Any?> = listOf(), boolean: String = "and"): Builder {
         havings.add(hashMapOf(
             "type" to "Raw",
             "sql" to sql,
@@ -594,12 +594,12 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun orHavingRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
+    open fun orHavingRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
         return havingRaw(sql, bindings, "or")
     }
 
     @JvmOverloads
-    fun orderBy(column: Any, direction: String = "asc"): Builder {
+    open fun orderBy(column: Any, direction: String = "asc"): Builder {
         if (isQueryable(column)) {
             val sub = createSub(column)
             addBinding(sub.second, if (unions.isEmpty()) "order" else "unionOrder")
@@ -622,26 +622,26 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun orderByDesc(column: String): Builder {
+    open fun orderByDesc(column: String): Builder {
         return orderBy(column, "desc")
     }
 
     @JvmOverloads
-    fun latest(column: String = "created_at"): Builder {
+    open fun latest(column: String = "created_at"): Builder {
         return orderBy(column, "desc")
     }
 
     @JvmOverloads
-    fun oldest(column: String = "created_at"): Builder {
+    open fun oldest(column: String = "created_at"): Builder {
         return orderBy(column, "asc")
     }
 
-    fun inRandomOrder(seed: String = ""): Builder {
+    open fun inRandomOrder(seed: String = ""): Builder {
         return orderByRaw(grammar.compileRandom(seed))
     }
 
     @JvmOverloads
-    fun orderByRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
+    open fun orderByRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
         val type = "Raw"
         val order = hashMapOf("type" to type, "sql" to sql)
         if (unions.isEmpty()) {
@@ -655,7 +655,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun reorder(column: String? = null, direction: String = "asc"): Builder {
+    open fun reorder(column: String? = null, direction: String = "asc"): Builder {
         orders.clear()
         unionOrders.clear()
         bindings["order"] = mutableListOf()
@@ -666,7 +666,7 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun limit(size: Int): Builder {
+    open fun limit(size: Int): Builder {
         if (size >= 0) {
             if (unions.isEmpty()) {
                 this.limit = size
@@ -677,9 +677,9 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun take(size: Int) = limit(size)
+    open fun take(size: Int) = limit(size)
 
-    fun offset(value: Int): Builder {
+    open fun offset(value: Int): Builder {
         val property = max(0, value)
         if (unions.isEmpty()) {
             this.offset = property
@@ -689,21 +689,21 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun skip(value: Int) = offset(value)
+    open fun skip(value: Int) = offset(value)
 
     @JvmOverloads
-    fun forPage(page: Int, pageSize: Int = 15): Builder {
+    open fun forPage(page: Int, pageSize: Int = 15): Builder {
         return offset((page - 1) * pageSize).limit(pageSize)
     }
 
     @JvmOverloads
-    fun forPageBeforeId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
+    open fun forPageBeforeId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
         orders = removeExistingOrdersFor(column)
         return where(column, "<", lastId).orderBy(column, "desc").limit(pageSize)
     }
 
     @JvmOverloads
-    fun forPageAfterId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
+    open fun forPageAfterId(pageSize: Int = 15, lastId: Long = 0L, column: String = "id"): Builder {
         orders = removeExistingOrdersFor(column)
         return where(column, ">", lastId).orderBy(column, "asc").limit(pageSize)
     }
@@ -720,7 +720,7 @@ open class Builder: Cloneable {
 
     @JvmOverloads
     @Suppress("UNCHECKED_CAST")
-    fun union(queryOrClosure: Any, all: Boolean = false): Builder {
+    open fun union(queryOrClosure: Any, all: Boolean = false): Builder {
         var newQuery = queryOrClosure
         if (queryOrClosure is Function1<*, *>) {
             queryOrClosure as Function1<Builder, Unit>
@@ -738,30 +738,30 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun unionAll(query: Builder) = union(query, true)
+    open fun unionAll(query: Builder) = union(query, true)
 
-    fun with(name: String, relation: Relation): Builder {
+    open fun with(name: String, relation: Relation): Builder {
         withes[name] = hashMapOf( // 先用 map，以后万一加别的参数
             "relation" to relation
         )
         return this
     }
 
-    fun with(name: String, relation: () -> Relation): Builder {
+    open fun with(name: String, relation: () -> Relation): Builder {
         return with(name, relation())
     }
 
-    fun withAggregate(name: String, relation: Relation, function: String, column: String): Builder {
+    open fun withAggregate(name: String, relation: Relation, function: String, column: String): Builder {
         val sub = buildAggregateSub(relation, function, column)
         selectSub(sub, name)
         return this
     }
 
-    private fun buildAggregateSub(relation: Relation, function: String, column: String): Builder {
+    protected open fun buildAggregateSub(relation: Relation, function: String, column: String): Builder {
         return relationBuilder(relation).selectRaw(grammar.ifnull("$function(${grammar.wrap(column)})", 0))
     }
 
-    private fun relationBuilder(relation: Relation): Builder {
+    protected open fun relationBuilder(relation: Relation): Builder {
         relation as Builder
         setUpEmptyQuery(relation)
         relation.withes.clear()
@@ -773,7 +773,7 @@ open class Builder: Cloneable {
         }
     }
 
-    private fun aggregateColumn(relation: Relation, column: String): String {
+    protected open fun aggregateColumn(relation: Relation, column: String): String {
         if (column == "*") return "*"
         if (column.contains(".")) return column
         return when(relation) {
@@ -784,26 +784,26 @@ open class Builder: Cloneable {
         }
     }
 
-    private fun hasOneBuilder(relation: HasOne): Builder {
+    protected open fun hasOneBuilder(relation: HasOne): Builder {
         val alias = getTableOrAlias()
         return relation.table(relation.table)
             .whereColumn("${relation.table}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
     }
 
-    private fun belongsToBuilder(relation: BelongsTo): Builder {
+    protected open fun belongsToBuilder(relation: BelongsTo): Builder {
         val alias = getTableOrAlias()
         return relation.table(relation.table)
             .whereColumn("${relation.table}.${relation.ownerKey}", "=", "$alias.${relation.foreignKey}")
     }
 
-    private fun belongsToManyBuilder(relation: BelongsToMany): Builder {
+    protected open fun belongsToManyBuilder(relation: BelongsToMany): Builder {
         val alias = getTableOrAlias()
         return relation.table(relation.table)
             .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
             .whereColumn("${relation.pivotTable}.${relation.foreignPivotKey}", "=", "$alias.${relation.localKey}")
     }
 
-    private fun getTableOrAlias(): String {
+    protected open fun getTableOrAlias(): String {
         val table = if (from is Expression) {
             (from as Expression).value as String
         } else {
@@ -813,35 +813,35 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun withCount(name: String, relation: Relation, column: String = "*"): Builder {
+    open fun withCount(name: String, relation: Relation, column: String = "*"): Builder {
         return withAggregate(name, relation, "count", column)
     }
 
-    fun withSum(name: String, relation: Relation, column: String): Builder {
+    open fun withSum(name: String, relation: Relation, column: String): Builder {
         return withAggregate(name, relation, "sum", column)
     }
 
-    fun withMin(name: String, relation: Relation, column: String): Builder {
+    open fun withMin(name: String, relation: Relation, column: String): Builder {
         return withAggregate(name, relation, "min", column)
     }
 
-    fun withMax(name: String, relation: Relation, column: String): Builder {
+    open fun withMax(name: String, relation: Relation, column: String): Builder {
         return withAggregate(name, relation, "max", column)
     }
 
-    fun withAvg(name: String, relation: Relation, column: String): Builder {
+    open fun withAvg(name: String, relation: Relation, column: String): Builder {
         return withAggregate(name, relation, "avg", column)
     }
 
-    fun getFlattenBindings(): List<Any?> {
+    open fun getFlattenBindings(): List<Any?> {
         return flatten(bindings)
     }
 
-    fun getRawBindings(): MutableMap<String, MutableList<Any?>> {
+    open fun getRawBindings(): MutableMap<String, MutableList<Any?>> {
         return bindings
     }
 
-    fun addBinding(value: Any?, type: String = "where"): Builder {
+    open fun addBinding(value: Any?, type: String = "where"): Builder {
         if (type !in bindings.keys) {
             throw InvalidArgumentException("Invalid binding type: {$type}.");
         }
@@ -853,23 +853,23 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun cleanBindings(bindings: List<Any?>): List<Any?> {
+    open fun cleanBindings(bindings: List<Any?>): List<Any?> {
         return bindings.filter { it !is Expression }
     }
 
-    fun mergeBinding(builder: Builder): Builder {
+    open fun mergeBinding(builder: Builder): Builder {
         bindings.map { binding ->
             binding.value.addAll(builder.bindings[binding.key]!!)
         }
         return this
     }
 
-    protected fun forNestedWhere(): Builder {
+    protected open fun forNestedWhere(): Builder {
         return Builder().from(this.from)
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun get(): List<Map<String, Any?>> {
+    open fun get(): List<Map<String, Any?>> {
         var result = runSelect<List<*>>() as List<Map<String, Any?>>
         if (withes.isNotEmpty()) {
             withes.forEach { (name, map) ->
@@ -881,18 +881,18 @@ open class Builder: Cloneable {
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T : Any> get(rowMapper: RowMapper<T>): List<T> {
+    open fun <T : Any> get(rowMapper: RowMapper<T>): List<T> {
         return runSelect<T>(rowMapper) as List<T>
     }
 
-    fun <T : Any> get(klass: Class<T>): List<T> {
+    open fun <T : Any> get(klass: Class<T>): List<T> {
         val result = get()
         val jsonMapper = jacksonObjectMapper()
         val json = jsonMapper.writeValueAsString(result)
         return jsonMapper.readValue(json, jsonMapper.typeFactory.constructCollectionType(List::class.java, klass))
     }
 
-    private fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation): List<Map<String, Any?>> {
+    protected open fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation): List<Map<String, Any?>> {
         return when (relation) {
             is HasOne -> resolveHashOne(result, name, relation.copy())
             is BelongsTo -> resolveBelongsTo(result, name, relation.copy())
@@ -901,7 +901,7 @@ open class Builder: Cloneable {
         }
     }
 
-    private fun resolveHashOne(
+    protected open fun resolveHashOne(
         result: List<Map<String, Any?>>,
         name: String,
         relation: HasOne
@@ -922,7 +922,7 @@ open class Builder: Cloneable {
         return result
     }
 
-    private fun resolveBelongsTo(
+    protected open fun resolveBelongsTo(
         result: List<Map<String, Any?>>,
         name: String,
         relation: BelongsTo
@@ -939,7 +939,7 @@ open class Builder: Cloneable {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun resolveBelongsToMany(
+    protected open fun resolveBelongsToMany(
         result: List<Map<String, Any?>>,
         name: String,
         relation: BelongsToMany
@@ -978,7 +978,7 @@ open class Builder: Cloneable {
         return result
     }
 
-    private fun replayBelongsToMany(builder: Builder, relation: BelongsToMany) {
+    protected open fun replayBelongsToMany(builder: Builder, relation: BelongsToMany) {
         relation.wherePivots.forEach {
             builder.where(it[0]!!, it[1] as String?, it[2], it[3] as String)
         }
@@ -996,7 +996,7 @@ open class Builder: Cloneable {
         }
     }
 
-    private fun setUpEmptyQuery(builder: Builder) {
+    protected open fun setUpEmptyQuery(builder: Builder) {
         if (builder.jdbcTemplate == null) {
             builder.jdbcTemplate = jdbcTemplate
             builder.grammar = grammar
@@ -1004,21 +1004,21 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun paginate(page: Int = 1, pageSize: Int = 15): Page {
+    open fun paginate(page: Int = 1, pageSize: Int = 15): Page {
         return paginate<Map<String,Any?>>(null, null, page, pageSize)
     }
 
     @JvmOverloads
-    fun <T : Any> paginate(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
+    open fun <T : Any> paginate(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
         return paginate(rowMapper, null, page, pageSize)
     }
 
     @JvmOverloads
-    fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page {
+    open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page {
         return paginate(null, klass, page, pageSize)
     }
 
-    private fun <T: Any> paginate(rowMapper: RowMapper<T>? = null, klass: Class<T>? = null, page: Int = 1, pageSize: Int = 15): Page{
+    protected open fun <T: Any> paginate(rowMapper: RowMapper<T>? = null, klass: Class<T>? = null, page: Int = 1, pageSize: Int = 15): Page{
         val total = getCountForPagination()
         val results = if (total > 0) {
             if (rowMapper != null) {
@@ -1034,14 +1034,14 @@ open class Builder: Cloneable {
         return Page.new(page, pageSize, total, results)
     }
 
-    protected fun getCountForPagination(): Long {
+    protected open fun getCountForPagination(): Long {
         val result = runPaginationCountQuery()
         if (result.isEmpty()) return 0
 
         return result.first()["aggregate"] as Long
     }
 
-    protected fun runPaginationCountQuery(): List<Map<String, Any?>> {
+    protected open fun runPaginationCountQuery(): List<Map<String, Any?>> {
         if (groups.isNotEmpty() || havings.isNotEmpty()) {
             val clone = cloneForPaginationCount()
 
@@ -1060,17 +1060,17 @@ open class Builder: Cloneable {
             .get()
     }
 
-    protected fun cloneForPaginationCount(): Builder {
+    protected open fun cloneForPaginationCount(): Builder {
         return cloneWithout(listOf("orders", "limit", "offset", "withes"))
             .cloneWithoutBindings(listOf("orders"))
     }
 
-    private fun printDebugInfo(sql: String, bindings: Any?) {
+    protected open fun printDebugInfo(sql: String, bindings: Any?) {
         log.debug("- sql: $sql")
         log.debug("- bindings: $bindings")
     }
 
-    protected fun <T : Any> runSelect(rowMapper: RowMapper<T>? = null): List<Any> {
+    protected open fun <T : Any> runSelect(rowMapper: RowMapper<T>? = null): List<Any> {
         val sql = toSql()
         val bindings = getFlattenBindings()
         printDebugInfo(sql, bindings)
@@ -1080,40 +1080,40 @@ open class Builder: Cloneable {
         return jdbcTemplate!!.query(sql, rowMapper, *bindings.toTypedArray())
     }
 
-    fun exists(): Boolean {
+    open fun exists(): Boolean {
         val sql = grammar.compileExists(this)
         val bindings = getFlattenBindings()
         printDebugInfo(sql, bindings)
         return jdbcTemplate!!.queryForMap(sql, *bindings.toTypedArray())["exists"].toBool()
     }
 
-    fun notExists(): Boolean = !exists()
-    fun doesntExists(): Boolean = notExists()
+    open fun notExists(): Boolean = !exists()
+    open fun doesntExists(): Boolean = notExists()
 
     @JvmOverloads
-    fun count(column: String = "*"): Long {
+    open fun count(column: String = "*"): Long {
         return aggregate("count", column) as Long
     }
 
-    fun min(column: String): Any? {
+    open fun min(column: String): Any? {
         return aggregate("min", column)
     }
 
-    fun max(column: String): Any? {
+    open fun max(column: String): Any? {
         return aggregate("max", column)
     }
 
-    fun sum(column: String): Any {
+    open fun sum(column: String): Any {
         return aggregate("sum", column) ?: 0
     }
 
-    fun avg(column: String): Any? {
+    open fun avg(column: String): Any? {
         return aggregate("avg", column)
     }
 
-    fun average(column: String) = avg(column)
+    open fun average(column: String) = avg(column)
 
-    fun aggregate(function: String, vararg columns: String): Any? {
+    open fun aggregate(function: String, vararg columns: String): Any? {
         val results = cloneWithout(if(unions.isNotEmpty()) listOf() else listOf("columns"))
             .cloneWithoutBindings(if (unions.isNotEmpty()) listOf() else listOf("select"))
             .setAggregate(function, columns.toList())
@@ -1125,13 +1125,13 @@ open class Builder: Cloneable {
         return null
     }
 
-    fun numericAggregate(function: String, vararg column: String): Number {
+    open fun numericAggregate(function: String, vararg column: String): Number {
         val result = aggregate(function, *column) ?: return 0
 
         return result as Number
     }
 
-    protected fun setAggregate(function: String, columns: List<String>): Builder {
+    protected open fun setAggregate(function: String, columns: List<String>): Builder {
         aggregate = hashMapOf(
             "function" to function,
             "columns" to columns
@@ -1143,7 +1143,7 @@ open class Builder: Cloneable {
         return this
     }
 
-    fun cloneWithoutBindings(excepts: List<String>): Builder {
+    open fun cloneWithoutBindings(excepts: List<String>): Builder {
         return this.copy().also { builder ->
             excepts.forEach { except ->
                 builder.bindings[except] = mutableListOf()
@@ -1151,7 +1151,7 @@ open class Builder: Cloneable {
         }
     }
 
-    fun cloneWithout(properties: List<String>): Builder {
+    open fun cloneWithout(properties: List<String>): Builder {
         return this.copy().also { builder ->
             properties.forEach { name ->
                 when (name) {
@@ -1165,7 +1165,7 @@ open class Builder: Cloneable {
         }
     }
 
-    protected fun onceWithColumns(fields: List<Any>, callback: () -> List<Any>): List<Any> {
+    protected open fun onceWithColumns(fields: List<Any>, callback: () -> List<Any>): List<Any> {
         val original = this.columns
         if (empty(original)) {
             this.columns.addAll(fields)
@@ -1176,66 +1176,66 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun firstWhere(column: String, operator: String, value: Any?, boolean: String = "and"): Map<String, Any?>? {
+    open fun firstWhere(column: String, operator: String, value: Any?, boolean: String = "and"): Map<String, Any?>? {
         return where(column, operator, value, boolean).first()
     }
 
-    fun first(): Map<String, Any?>? {
+    open fun first(): Map<String, Any?>? {
         return take(1).get().firstOrNull()
     }
 
-    fun <T: Any> first(rowMapper: RowMapper<T>): T? {
+    open fun <T: Any> first(rowMapper: RowMapper<T>): T? {
         return take(1).get(rowMapper).firstOrNull()
     }
 
-    fun <T: Any> first(klass: Class<T>): T? {
+    open fun <T: Any> first(klass: Class<T>): T? {
         return take(1).get(klass).firstOrNull()
     }
 
     @JvmOverloads
-    fun ifTrue(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null): Builder {
+    open fun ifTrue(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null): Builder {
         if (value) callback(this) else if (default != null) default(this)
         return this
     }
     @JvmOverloads
-    fun whenTrue(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifTrue(value, callback, default)
+    open fun whenTrue(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifTrue(value, callback, default)
     @JvmOverloads
-    fun ifFalse(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifTrue(!value, callback, default)
+    open fun ifFalse(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifTrue(!value, callback, default)
     @JvmOverloads
-    fun whenFalse(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifFalse(value, callback, default)
+    open fun whenFalse(value: Boolean, callback: (Builder) -> Unit, default: ((Builder) -> Unit)? = null) = ifFalse(value, callback, default)
 
-    fun tap(callback: (Builder) -> Unit): Builder {
+    open fun tap(callback: (Builder) -> Unit): Builder {
         return whenTrue(true, callback)
     }
 
-    fun find(id: Any): Map<String, Any?>? {
+    open fun find(id: Any): Map<String, Any?>? {
         return where("id", "=", id).first()
     }
 
-    fun <T: Any> find(id: Any, rowMapper: RowMapper<T>): T? {
+    open fun <T: Any> find(id: Any, rowMapper: RowMapper<T>): T? {
         return where("id", "=", id).first(rowMapper)
     }
 
-    fun <T: Any> find(id: Any, klass: Class<T>): T? {
+    open fun <T: Any> find(id: Any, klass: Class<T>): T? {
         return where("id", "=", id).first(klass)
     }
 
-    fun sole(): Map<String, Any?> {
+    open fun sole(): Map<String, Any?> {
         val records = take(2).get()
         return getSole(records)
     }
 
-    fun <T: Any> sole(rowMapper: RowMapper<T>): T {
+    open fun <T: Any> sole(rowMapper: RowMapper<T>): T {
         val records = take(2).get(rowMapper)
         return getSole(records)
     }
 
-    fun <T: Any> sole(klass: Class<T>): T {
+    open fun <T: Any> sole(klass: Class<T>): T {
         val records = take(2).get(klass)
         return getSole(records)
     }
 
-    private fun <T: Any> getSole(records: List<T>): T {
+    protected open fun <T: Any> getSole(records: List<T>): T {
         if (records.isEmpty()) {
             throw RecordsNotFoundException()
         }
@@ -1245,28 +1245,28 @@ open class Builder: Cloneable {
         return records.first()
     }
 
-    fun value(column: String): Any? {
+    open fun value(column: String): Any? {
         val result = first()
         return result?.get(column)
     }
 
-    fun soleValue(column: String): Any? {
+    open fun soleValue(column: String): Any? {
         return sole()[column]
     }
 
-    fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
+    open fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
         return chunk(null, null, count, callback)
     }
 
-    fun <T: Any> chunk(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+    open fun <T: Any> chunk(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         return chunk(rowMapper, null, count, callback)
     }
 
-    fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+    open fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         return chunk(null, klass, count, callback)
     }
 
-    private fun <T: Any> chunk(rowMapper: RowMapper<T>?, klass: Class<T>?, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+    protected open fun <T: Any> chunk(rowMapper: RowMapper<T>?, klass: Class<T>?, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
         do {
@@ -1287,7 +1287,7 @@ open class Builder: Cloneable {
         return true
     }
 
-    fun each(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000): Boolean {
+    open fun each(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000): Boolean {
         return chunk(count) { rows, page ->
             rows.forEachIndexed { index, row ->
                 if (!callback(row, (page - 1) * count + index)) {
@@ -1298,7 +1298,7 @@ open class Builder: Cloneable {
         }
     }
 
-    fun <T: Any> each(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
+    open fun <T: Any> each(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
         return chunk(rowMapper, count) { rows, page ->
             rows.forEachIndexed { index, row ->
                 if (!callback(row, (page - 1) * count + index)) {
@@ -1309,7 +1309,7 @@ open class Builder: Cloneable {
         }
     }
 
-    fun <T: Any> each(klass: Class<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
+    open fun <T: Any> each(klass: Class<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
         return chunk(klass, count) { rows, page ->
             rows.forEachIndexed { index, row ->
                 if (!callback(row, (page - 1) * count + index)) {
@@ -1320,7 +1320,7 @@ open class Builder: Cloneable {
         }
     }
 
-    fun chunkById(count: Int, callback: (List<Map<String, Any?>>, Int) -> Boolean, column: String = "id"): Boolean {
+    open fun chunkById(count: Int, callback: (List<Map<String, Any?>>, Int) -> Boolean, column: String = "id"): Boolean {
         var lastId: Long? = 0
         var page = 1
         do {
@@ -1340,7 +1340,7 @@ open class Builder: Cloneable {
         return true
     }
 
-    fun eachById(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000, column: String = "id"): Boolean {
+    open fun eachById(callback: (Map<String, Any?>, Int) -> Boolean, count: Int = 1000, column: String = "id"): Boolean {
         return chunkById(count, { rows, page ->
             rows.forEachIndexed { index, row ->
                 if (!callback(row, (page - 1) * count + index)) {
@@ -1351,14 +1351,14 @@ open class Builder: Cloneable {
         }, column)
     }
 
-    protected fun enforceOrderBy() {
+    protected open fun enforceOrderBy() {
         if (orders.isEmpty() && unionOrders.isEmpty()) {
             throw RuntimeException("You must specify an orderBy clause when using this function.")
         }
     }
 
     @Suppress("unchecked_cast")
-    fun pluck(column: Any): List<Any?> {
+    open fun pluck(column: Any): List<Any?> {
         val queryResult = onceWithColumns(listOf(column)) {
             this.get()
         } as List<Map<String, Any?>>
@@ -1370,12 +1370,12 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun implode(column: Any, glue: String = ""): String {
+    open fun implode(column: Any, glue: String = ""): String {
         return pluck(column).joinToString(glue)
     }
 
     @Suppress("unchecked_cast")
-    fun pluck(column: Any, key: Any): Map<String, Any?> {
+    open fun pluck(column: Any, key: Any): Map<String, Any?> {
         val queryResult = onceWithColumns(listOf(column, key)) {
             get()
         } as List<Map<String, Any?>>
@@ -1390,7 +1390,7 @@ open class Builder: Cloneable {
         }
     }
 
-    protected fun stripTableForPluck(column: Any?): String? {
+    protected open fun stripTableForPluck(column: Any?): String? {
         if (column == null) return null
         val columnName = if (column is Expression) {
             column.value as String
@@ -1401,25 +1401,25 @@ open class Builder: Cloneable {
         return columnName.split(Regex(separator, RegexOption.IGNORE_CASE)).last()
     }
 
-    protected fun isQueryable(value: Any?): Boolean {
+    protected open fun isQueryable(value: Any?): Boolean {
         return value is Builder || value is Function1<*, *>
     }
 
-    fun toSql(): String {
+    open fun toSql(): String {
         return grammar.compileSelect(this)
     }
 
-    fun dump(): Builder {
+    open fun dump(): Builder {
         println("sql:" + this.toSql())
         println("bindings" + this.getFlattenBindings().toString())
         return this
     }
-    fun insert(values: Map<String, Any?>): Int {
+    open fun insert(values: Map<String, Any?>): Int {
         return insert(listOf(values))
     }
 
     @JvmOverloads
-    fun insertGetId(values: Map<String, Any?>, sequence: String = "id"): Long {
+    open fun insertGetId(values: Map<String, Any?>, sequence: String = "id"): Long {
         val sql = grammar.compileInsertGetId(this, values, sequence)
         val parameters = values.filter { it.value !is Expression }.keys.sorted().map { values[it] }
         printDebugInfo(sql, parameters)
@@ -1436,7 +1436,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun insert(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+    open fun insert(values: List<Map<String, Any?>>, batch: Int = 0): Int {
         if (batch != 0) {
             var effected = 0
             values.chunked(batch).forEach {
@@ -1448,7 +1448,7 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
-    protected fun insert(sql: String, values: List<Map<String, Any?>>): Int {
+    protected open fun insert(sql: String, values: List<Map<String, Any?>>): Int {
         var parameters = mutableListOf<Any?>()
         val columns = values.first().keys.sorted()
         values.forEach { value ->
@@ -1461,12 +1461,12 @@ open class Builder: Cloneable {
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
     }
 
-    fun insertOrIgnore(values: Map<String, Any?>): Int {
+    open fun insertOrIgnore(values: Map<String, Any?>): Int {
         return insertOrIgnore(listOf(values))
     }
 
     @JvmOverloads
-    fun insertOrIgnore(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+    open fun insertOrIgnore(values: List<Map<String, Any?>>, batch: Int = 0): Int {
         if (batch != 0) {
             var effected = 0
             values.chunked(batch).forEach {
@@ -1478,7 +1478,7 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
-    fun update(values: Map<String, Any?>): Int {
+    open fun update(values: Map<String, Any?>): Int {
         val sql = grammar.compileUpdate(this, values)
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
         printDebugInfo(sql, parameters)
@@ -1486,7 +1486,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun increment(column: String, amount: Number = 1, extra: Map<String, Any?> = mutableMapOf()): Int {
+    open fun increment(column: String, amount: Number = 1, extra: Map<String, Any?> = mutableMapOf()): Int {
         extra as MutableMap
         val wrapped = grammar.wrap(column)
         extra[column] = Expression("$wrapped + $amount")
@@ -1494,7 +1494,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun decrement(column: String, amount: Number = -1, extra: Map<String, Any?> = mutableMapOf()): Int {
+    open fun decrement(column: String, amount: Number = -1, extra: Map<String, Any?> = mutableMapOf()): Int {
         extra as MutableMap
         val wrapped = grammar.wrap(column)
         extra[column] = Expression("$wrapped - $amount")
@@ -1502,7 +1502,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    fun delete(id: Any? = null): Int {
+    open fun delete(id: Any? = null): Int {
         if (id != null) {
             where("$from.id", "=", id)
         }
@@ -1512,7 +1512,7 @@ open class Builder: Cloneable {
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
     }
 
-    fun truncate() {
+    open fun truncate() {
         grammar.compileTruncate(this).forEach { (sql, binding) ->
             printDebugInfo(sql, binding)
             jdbcTemplate!!.update(sql, *binding.toTypedArray())
