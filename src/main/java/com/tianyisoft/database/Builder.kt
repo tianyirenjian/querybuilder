@@ -1188,6 +1188,10 @@ open class Builder: Cloneable {
         return result?.get(column)
     }
 
+    fun soleValue(column: String): Any? {
+        return sole()[column]
+    }
+
     fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
         return chunk(null, null, count, callback)
     }
