@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tianyisoft.database.exceptions.InvalidArgumentException
 import com.tianyisoft.database.exceptions.MultipleRecordsFoundException
 import com.tianyisoft.database.exceptions.RecordsNotFoundException
+import com.tianyisoft.database.exceptions.UnsupportedOperatorException
 import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
 import com.tianyisoft.database.relations.*
@@ -478,9 +479,26 @@ open class Builder: Cloneable {
     open fun orWhereHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder =
         whereHas(relation, operator, count, "or")
 
-    open fun whereNotHas(relation: Relation): Builder = whereHas(relation, "=", 0)
+    @JvmOverloads
+    open fun whereNotHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
+        return whereHas(relation, getOppositeOperation(operator), count, boolean)
+    }
 
-    open fun orWhereNotHas(relation: Relation): Builder = orWhereHas(relation, "=", 0)
+    open fun orWhereNotHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder {
+        return whereNotHas(relation, operator, count, "or")
+    }
+
+    protected open fun getOppositeOperation(operator: String): String {
+        return hashMapOf(
+            ">" to "<=",
+            "<" to ">=",
+            "=" to "!=",
+            "!=" to "=",
+            "<>" to "=",
+            ">=" to "<",
+            "<=" to ">"
+        )[operator] ?: throw UnsupportedOperatorException()
+    }
 
     protected open fun buildRelationCountQuery(relation: Relation): Builder =
         relationBuilder(relation).selectRaw("count(*)")
