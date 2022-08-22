@@ -1,6 +1,6 @@
 # QueryBuilder
 
-数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是因为没有默认参数所以体验略差, 某些复杂参数的函数也无法调用。
+数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是某些复杂参数的函数可能无法调用。
 
 也可以使用 kotlin 来写 Repository 层调用，然后供其他的 java 代码直接调用方法。
 
@@ -12,14 +12,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.5</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.4'
+implementation 'com.tianyisoft.database:querybuilder:1.0.5'
 ```
 
 ### 使用说明
@@ -53,12 +53,17 @@ builder2.jdbcTemplate = jdbcTemplate
 import org.springframework.jdbc.core.BeanPropertyRowMapper
 
 val users = builder.table("users").get() // List<Map<String, Any?>>
-val users = builder.table("users").getObject(
+
+val users = builder.table("users").get(
     BeanPropertyRowMapper(User::class.java)
 ) // List<User>
+
+val users = builder.table("users").get(User::class.java) // List<User>
 ```
 
-`get` 可以获取 `List<Map<String, Any?>>` 的结果集，也可以用 `getObject` 通过 `RowMapper` 获取 `List<T>` 的结果集。
+`get` 可以获取 `List<Map<String, Any?>>` 的结果集，也可以用 `get` 通过 `RowMapper` 或者 `Class<T>` 获取 `List<T>` 的结果集。
+
+`RowMapper` 使用 `JdbcTemplate` 内置的转换方法, 而 `Class<T>` 的则是使用 jackson 来实现，所以如果数据库和字段名称不一致，可以使用 `@JsonProperty` 来标示.
 
 #### 获取单行或单列
 
@@ -69,9 +74,12 @@ val users = builder.table("users").getObject(
 import org.springframework.jdbc.core.BeanPropertyRowMapper
 
 val user = builder.table("users").first() // Map<String, Any?>
-val user = builder.table("users").firstObject(
+
+val user = builder.table("users").first(
     BeanPropertyRowMapper(User::class.java)
 ) // User
+
+val user = builder.table("users").first(User::class.java) // User
 ```
 
 如果不想要整行数据，可以用 `value` 方法取单列的值
@@ -86,7 +94,15 @@ val name = builder.table("users").value("name") // 取第一个用户的 name
 val user = builder.table("users").find(id)
 ```
 
-同样的也有 `findObject` 方法。
+同样 `find` 方法也有获取对象的重载方法。
+
+可以使用 `sole` 方法来查询数据库中的有且仅有一行的数据，不存在或存在多行都会报错。
+
+```kotlin
+val user = builder.table("users").where("role", "=", "super_admin").sole()
+```
+
+与之前的 `value` 相对应的也有 `soleValue` 方法，取有且仅有一行的数据的某一列的值。
 
 #### 获取某一列的值
 
@@ -139,11 +155,11 @@ builder.table("apps").eachById({row, index ->
 ```
 
 
-`chunk` 和 `each` 返回的数据都是 `Map` 类型的，也可以使用 `chunkObject` 和 `eachObject` 方法来返回对象。 `chunkById` 和 `eachById` 暂时没有对应的方法。
+`chunk` 和 `each` 返回的数据都是 `Map` 类型的，也可以传入 `RowMapper` 或 `Class<T>` 方法来返回对象。 `chunkById` 和 `eachById` 暂时没有对应的方法。
 
 ```kotlin
 builder.table("apps").select("id", "name").orderBy("id")
-    .eachObject(BeanPropertyRowMapper(Apps::class.java), { app, index ->
+    .each(BeanPropertyRowMapper(Apps::class.java), { app, index ->
         println(app)
         true
     })
@@ -432,6 +448,15 @@ val users = builder.table("users")
     .get()
 ```
 
+`whereNot` / `orWhereNot`
+
+```kotlin
+// select * from `users` where not `banned` = ?
+val users = builder.table("users")
+  .whereNot("banned", "=", 1)
+  .get()
+```
+
 `whereDate` / `whereMonth` / `whereDay` / `whereYear` / `whereTime` 用来比较时间
 
 ```kotlin
@@ -612,7 +637,7 @@ val page = builder.table("users")
     .paginate()
 ```
 
-`paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以使用 `paginateObject` 方法来传递 `RowMapper` 返回对象类型
+`paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `RowMapper` 或 `Class<T>` 来返回对象类型
 
 ### 条件语句
 
@@ -771,6 +796,267 @@ override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
     params["updated_at"] = now
     return params
 }
+```
+
+### Relation 关联
+
+因为 QueryBuilder 并不是 orm 框架，所以实现关联也没有和类的字段关联起来，而是直接生成一个关联的实例来使用。
+
+目前直接的关联有 `HasOne`(一对一), `BelongsTo`(反向一对一), `HasMany`(一对多) 和 `BelongsToMany`(多对多)。
+
+#### HasOne, HasMany 和 BelongsTo
+
+##### HasOne 和 HasMany
+
+首先创建两个表
+
+`user` 表
+
+| id  | name	 | age | habits            |
+|----:|------:|----:|:------------------|
+| 1	  | 小米	   | 18	 | ["sports"]        |
+| 2	  | 小明	   | 22	 | ["music"]         |
+| 3	  | 小红	   | 21	 | ["sleep", "read"] |
+
+`id_card` 表
+
+| 	id | 	user_id	 | number             |
+|----:|----------:|:-------------------|
+| 	1	 |        1	 | ABSBEE2022-02-28   |
+| 	2	 |        2	 | 123456200105021251 |
+
+每个 user 有一个 id_card, 可以表示为 `HasOne("id_card", "user_id", "id")`, 因为默认参数可以简写为 `HasOne("id_card", "user_id")`
+
+查询关联数据使用 `with` 方法, `with` 方法的第一个参数是关联字段的名字，是任意取的，第二个参数是关联对象
+
+```kotlin
+val userWithIdCard = builder.table("user")
+    .with("id_card", HasOne("id_card", "user_id"))
+    .get() // List<Map<String, Any?>>
+```
+
+以上程序返回
+
+```json
+[
+    {
+        "id":1,
+        "name":"小米",
+        "age":18,
+        "habits":"[\"sports\"]",
+        "id_card":{
+            "id":1,
+            "user_id":1,
+            "number":"ABSBEE2022-02-28"
+        }
+    },
+    {
+        "id":2,
+        "name":"小明",
+        "age":22,
+        "habits":"[\"music\"]",
+        "id_card":{
+            "id":2,
+            "user_id":2,
+            "number":"123456200105021251"
+        }
+    },
+    {
+        "id":3,
+        "name":"小红",
+        "age":21,
+        "habits":"[\"sleep\", \"read\"]",
+        "id_card":null
+    }
+]
+```
+
+这里也可以创建一个 `User` 类和 `IdCard` 类来接收参数
+
+```java
+class User {
+  private Long id;
+  private String name;
+  private Integer age;
+  private String habits;
+  @JsonProperty("id_card")
+  private Idcard idCard;
+  // getters and setters ...
+}
+
+class IdCard {
+  private Long id;
+  @JsonProperty("user_id")
+  private Long userId;
+  private String number;
+  // getters and setters ...
+}
+```
+
+取的时候使用 `get` 方法的重载方法就可以了。
+
+```kotlin
+val userWithIdCard = builder.table("user")
+    .with("id_card", HasOne("id_card", "user_id"))
+    .get(User::class.java) // List<User>
+```
+
+以上是 `HasOne` 的用法，`HasOne` 是 `HasMany` 的一种特殊情况，`HasMany` 和 `HasOne` 用法基本一样, 不再赘述。
+
+`HasMany` 返回的是数组，而不像 `HasOne` 是单独的对象，这是唯一的区别。
+
+##### BelongsTo
+
+`BelongsTo` 是和 `HasOne` 和 `HasMany` 相反的关联，还用上面的两个表举例, id_card 是属于 user 的，用 `BelongsTo` 表示就是 `BelongsTo("user", "user_id")`
+
+```kotlin
+val idCardWithUser = builder.table("id_card")
+    .with("user", BelongsTo("user", "user_id"))
+    .get(IdCard::class.java)
+println(idCardWithUser)
+```
+
+输出数据
+
+```text
+[IdCard{id=1, userId=1, number='ABSBEE2022-02-28', user=User{id=1, name='小米', age=18, habits='["sports"]'}}, IdCard{id=2, userId=2, number='123456200105021251', user=User{id=2, name='小明', age=22, habits='["music"]'}}]
+```
+
+`HasOne`, `HasMany` 和 `BelongsTo` 都是继承自 `Builder` 的，可以使用 `Builder` 类的各种方法。
+
+如查询 user, 把 id_card 也带出来，同时限制 id_card 的 id 是大于 1 的。
+
+```kotlin
+builder.table("user")
+    .with("id_card", HasOne("id_card", "user_id").where("id", ">", 1) as HasOne)
+    .get()
+```
+
+#### BelongsToMany
+
+`BelongsToMany` 表示多对多关系，需要中间表的支持。比如用户和权限的关系，一个用户可以有多个权限，一个权限也可以属于多个用户。
+
+下面有3个表，用户表，权限表，用户权限关系表
+
+`user` 表
+
+| id  | name	 |
+|----:|------:|
+| 1	  | 小米	   |
+| 2	  | 小明	   |
+| 3	  | 小红	   |
+
+`permission` 表
+
+|  id | name	 |
+|----:|------:|
+|  1	 |    增	 |
+|  2	 |    删	 |
+|  3	 |    改	 |
+|  4	 |    查	 |
+
+`permission_user` 表
+
+| 	id | 	user_id | 	permission_id |
+|----:|---------:|---------------:|
+| 	1	 |       1	 |              1 |
+| 	2	 |       1	 |              2 |
+| 	3	 |       1	 |              3 |
+| 	4	 |       2	 |              4 |
+| 	5	 |       1	 |              4 |
+| 	6	 |       3	 |              4 |
+| 	7	 |       2	 |              1 |
+
+user 表和 permission 表的关联可以表示为 `BelongsToMany("permission", "permission_user", "user_id", "permission_id", "id", "id")`, 
+第一个参数为关联的表名，第二个参数为中间表名，第三个参数为当前表在中间表里的关联字段，
+第四个参数为关联的表在中间表的关联字段, 第五个参数为当前表的id字段，第六个参数为关联表的id字段。
+当第五个和第六个参数是 id时，可以省略
+
+反向的 permission 表和 user 表的关系可以表示为`BelongsToMany("user", "permission_user", "permission_id", "user_id")`
+
+接下来就可以通过 `with` 方法来取数据了,使用方法和上面的 `HasOne` 没有区别。
+
+`BelongsToMany` 也继承自 `Builder` 类，所以也可以使用 `Builder` 类的各种方法，除此之外，还实现了自己的一些方法用来限制中间表。
+
+这些方法是 `wherePivot`, `wherePivotBetween`, `wherePivotIn`, `wherePivotNull`, `orderByPivot`,这些限制的是中间表的数据, 用法和去掉 Pivot 后的 `Builder` 类同名方法一样，如
+
+```kotlin
+BelongsToMany("permission", "permission_user", "user_id", "permission_id", "id", "id")
+    .wherePivot("id", ">", 3)
+// 要求中间表 permission_user 的数据 id 是大于 3的，不符合条件的数据则不会被关联出来
+```
+
+#### 关联统计
+
+关联可以不直接查出关联数据，而是计算出关联的数据，比如关联的条数，关联内容某列的和等。
+
+关联统计的方法有 `withCount`, `withSum`, `withAvg`, `withMin` 和 `withMax`
+
+还以上面的 `HasOne` 为例, 查询每个 user 的 id_card 数量:
+
+```kotlin
+val user = builder.table("user")
+    .select("id", "name") // 这里的 select 是有用的，不然会只返回 id_card_count 一列
+    .withCount("id_card_count", HasOne("id_card", "user_id"))
+    .get()
+```
+
+以上代码返回
+
+```json
+[
+    {
+        "id":1,
+        "name":"小米",
+        "id_card_count":1
+    },
+    {
+        "id":2,
+        "name":"小明",
+        "id_card_count":1
+    },
+    {
+        "id":3,
+        "name":"小红",
+        "id_card_count":0
+    }
+]
+```
+
+#### 基于关联存在的查询
+
+可以把关联做为条件来进行查询，比如我要查询有 id_card 的 user, 或者要查询有三个及以上 permission 的 user。
+
+要实现这个的功能可以使用 whereHas
+
+```kotlin
+// 查询有 id_card 的 user
+/*
+SELECT *
+FROM `user`
+WHERE EXISTS (
+	SELECT 1
+	FROM `id_card`
+	WHERE `id_card`.`user_id` = `user`.`id`
+)
+*/
+builder.table("user").whereHas(HasOne("id_card", "user_id")).get()
+
+
+// 查询有三个及以上 permission 的 user
+/*
+SELECT *
+FROM `user`
+WHERE (
+	SELECT count(*)
+	FROM `permission`
+		INNER JOIN `permission_user` ON `permission_user`.`permission_id` = `permission`.`id`
+	WHERE `permission_user`.`user_id` = `user`.`id`
+) >= ?
+*/
+builder.table("user")
+    .whereHas(BelongsToMany("permission", "permission_user", "user_id", "permission_id", ">=", 3)
+    .get()
 ```
 
 
