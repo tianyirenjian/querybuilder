@@ -465,7 +465,7 @@ open class Builder: Cloneable {
     open fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
         if (canUserExists(operator, count)) {
             val sub = buildRelationExistsSub(relation)
-            val not = (operator == "<" && (count == 1 || count == 0)) || (operator == "<=" && count == 0) || (operator == "=" && count == 0)
+            val not = (operator == "<" && count == 1) || (operator in listOf("<", "=", "<=") && count == 0)
             addWhereExistsQuery(sub, boolean, not)
         } else {
             val sub = buildRelationCountQuery(relation)
@@ -478,6 +478,10 @@ open class Builder: Cloneable {
     open fun orWhereHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder =
         whereHas(relation, operator, count, "or")
 
+    open fun whereNotHas(relation: Relation): Builder = whereHas(relation, "=", 0)
+
+    open fun orWhereNotHas(relation: Relation): Builder = orWhereHas(relation, "=", 0)
+
     protected open fun buildRelationCountQuery(relation: Relation): Builder =
         relationBuilder(relation).selectRaw("count(*)")
 
@@ -485,7 +489,7 @@ open class Builder: Cloneable {
         relationBuilder(relation).selectRaw("1")
 
     protected open fun canUserExists(operator: String, count: Int): Boolean {
-        return (operator == ">=" || operator == "<") && count == 1
+        return (operator in listOf(">=", "<") && count == 1) || (operator in listOf(">", "<", "<=", "=") && count == 0)
     }
 
     protected open fun forSubQuery(): Builder {
