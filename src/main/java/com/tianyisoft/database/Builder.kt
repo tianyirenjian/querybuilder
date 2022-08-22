@@ -770,7 +770,7 @@ open class Builder: Cloneable {
         setUpEmptyQuery(relation)
         relation.withes.clear()
         return when(relation) {
-            is HasOne -> hasOneBuilder(relation.copy())
+            is HasMany -> hasManyBuilder(relation.copy())
             is BelongsTo -> belongsToBuilder(relation.copy())
             is BelongsToMany -> belongsToManyBuilder(relation.copy())
             else -> relation.copy()
@@ -781,14 +781,14 @@ open class Builder: Cloneable {
         if (column == "*") return "*"
         if (column.contains(".")) return column
         return when(relation) {
-            is HasOne -> "${relation.table}.$column"
+            is HasMany -> "${relation.table}.$column"
             is BelongsTo -> "${relation.table}.$column"
             is BelongsToMany -> "${relation.table}.$column"
             else -> "*"
         }
     }
 
-    protected open fun hasOneBuilder(relation: HasOne): Builder {
+    protected open fun hasManyBuilder(relation: HasMany): Builder {
         val alias = getTableOrAlias()
         return relation.table(relation.table)
             .whereColumn("${relation.table}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
@@ -898,17 +898,17 @@ open class Builder: Cloneable {
 
     protected open fun resolveRelation(result: List<Map<String, Any?>>, name: String, relation: Relation): List<Map<String, Any?>> {
         return when (relation) {
-            is HasOne -> resolveHashOne(result, name, relation.copy())
+            is HasMany -> resolveHasMany(result, name, relation.copy())
             is BelongsTo -> resolveBelongsTo(result, name, relation.copy())
             is BelongsToMany -> resolveBelongsToMany(result, name, relation.copy())
             else -> result
         }
     }
 
-    protected open fun resolveHashOne(
+    protected open fun resolveHasMany(
         result: List<Map<String, Any?>>,
         name: String,
-        relation: HasOne
+        relation: HasMany
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
@@ -917,10 +917,10 @@ open class Builder: Cloneable {
         result.forEach {
             it as MutableMap
             // 通过字符串比较，防止类型不统一造成的不相等
-            if (relation is HasMany) {
-                it[name] = data.filter { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
-            } else {
+            if (relation is HasOne) {
                 it[name] = data.firstOrNull { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
+            } else {
+                it[name] = data.filter { datum -> datum[relation.foreignKey].toString() == it[relation.localKey].toString() }
             }
         }
         return result
