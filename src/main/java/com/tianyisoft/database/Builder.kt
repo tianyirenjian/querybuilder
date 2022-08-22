@@ -484,6 +484,7 @@ open class Builder: Cloneable {
         return whereHas(relation, getOppositeOperation(operator), count, boolean)
     }
 
+    @JvmOverloads
     open fun orWhereNotHas(relation: Relation, operator: String = ">=", count: Int = 1): Builder {
         return whereNotHas(relation, operator, count, "or")
     }
