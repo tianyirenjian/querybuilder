@@ -1,12 +1,12 @@
 package com.tianyisoft.database
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.tianyisoft.database.exceptions.InvalidArgumentException
 import com.tianyisoft.database.exceptions.MultipleRecordsFoundException
 import com.tianyisoft.database.exceptions.RecordsNotFoundException
 import com.tianyisoft.database.exceptions.UnsupportedOperatorException
 import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
+import com.tianyisoft.database.jackson.JsonBuilder
 import com.tianyisoft.database.relations.*
 import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
@@ -910,7 +910,7 @@ open class Builder: Cloneable {
 
     open fun <T : Any> get(klass: Class<T>): List<T> {
         val result = get()
-        val jsonMapper = jacksonObjectMapper()
+        val jsonMapper = JsonBuilder.build()
         val json = jsonMapper.writeValueAsString(result)
         return jsonMapper.readValue(json, jsonMapper.typeFactory.constructCollectionType(List::class.java, klass))
     }
@@ -1289,6 +1289,7 @@ open class Builder: Cloneable {
         return chunk(null, klass, count, callback)
     }
 
+    @Suppress("UNCHECKED_CAST")
     protected open fun <T: Any> chunk(rowMapper: RowMapper<T>?, klass: Class<T>?, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
