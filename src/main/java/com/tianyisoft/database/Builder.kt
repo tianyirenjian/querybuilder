@@ -8,6 +8,7 @@ import com.tianyisoft.database.grammar.Grammar
 import com.tianyisoft.database.grammar.MysqlGrammar
 import com.tianyisoft.database.jackson.JsonBuilder
 import com.tianyisoft.database.relations.*
+import com.tianyisoft.database.snippets.Snippet
 import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
@@ -464,7 +465,7 @@ open class Builder: Cloneable {
 
     @JvmOverloads
     open fun whereHas(relation: Relation, operator: String = ">=", count: Int = 1, boolean: String = "and"): Builder {
-        if (canUserExists(operator, count)) {
+        if (canUseExists(operator, count)) {
             val sub = buildRelationExistsSub(relation)
             val not = (operator == "<" && count == 1) || (operator in listOf("<", "=", "<=") && count == 0)
             addWhereExistsQuery(sub, boolean, not)
@@ -507,7 +508,7 @@ open class Builder: Cloneable {
     protected open fun buildRelationExistsSub(relation: Relation): Builder =
         relationBuilder(relation).selectRaw("1")
 
-    protected open fun canUserExists(operator: String, count: Int): Boolean {
+    protected open fun canUseExists(operator: String, count: Int): Boolean {
         return (operator in listOf(">=", "<") && count == 1) || (operator in listOf(">", "<", "<=", "=") && count == 0)
     }
 
@@ -558,6 +559,11 @@ open class Builder: Cloneable {
             ))
             addBinding(query.getRawBindings()["where"], "where")
         }
+        return this
+    }
+
+    open fun use(snippet: Snippet, vararg params: Any?): Builder {
+        snippet.apply(this, *params.map { it }.toTypedArray())
         return this
     }
 
@@ -866,7 +872,7 @@ open class Builder: Cloneable {
 
     open fun addBinding(value: Any?, type: String = "where"): Builder {
         if (type !in bindings.keys) {
-            throw InvalidArgumentException("Invalid binding type: {$type}.");
+            throw InvalidArgumentException("Invalid binding type: {$type}.")
         }
         if (value is List<*>) {
             bindings[type]!!.addAll(value)
