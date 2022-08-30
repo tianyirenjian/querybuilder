@@ -10,7 +10,7 @@ val deletedSnippet = Snippet { builder, params ->
 
 val statusSnippet = Snippet { builder, params ->
     if (params.size == 1) {
-        builder.where("status", "=", params[1])
+        builder.where("status", "=", params[0])
     } else if (params.size == 2) {
         builder.where(params[0] as String, "=", params[1])
     }
