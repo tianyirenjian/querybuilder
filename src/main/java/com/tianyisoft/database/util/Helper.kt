@@ -1,5 +1,7 @@
 package com.tianyisoft.database.util
 
+import com.tianyisoft.database.annotations.DbField
+import java.lang.reflect.Field
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.Collection
@@ -77,5 +79,27 @@ fun Any?.toBool(): Boolean {
         is Array<*> -> value.isNotEmpty()
         is Map<*, *> -> value.isNotEmpty()
         else -> true
+    }
+}
+
+fun classToMapForBuilder(obj: Any): Map<String, Any?> {
+    val fields = getAllFields(obj.javaClass).filter { it.isAnnotationPresent(DbField::class.java) }
+    val map = hashMapOf<String, Any?>()
+    fields.forEach {
+        val annotation = it.getAnnotation(DbField::class.java)
+        val name = if (annotation.name != "") annotation.name else it.name
+        val accessible = it.isAccessible
+        it.isAccessible = true
+        map[name] = it.get(obj)
+        it.isAccessible = accessible
+    }
+    return map
+}
+
+fun getAllFields(obj: Class<*>): List<Field> {
+    return if (obj.superclass == null) {
+        obj.declaredFields.toMutableList() + getAllFields(obj.superclass)
+    } else {
+        obj.declaredFields.toList()
     }
 }

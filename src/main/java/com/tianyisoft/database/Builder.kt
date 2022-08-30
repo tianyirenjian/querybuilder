@@ -1444,12 +1444,11 @@ open class Builder: Cloneable {
         println("bindings" + this.getFlattenBindings().toString())
         return this
     }
-    open fun insert(values: Map<String, Any?>): Int {
-        return insert(listOf(values))
-    }
 
     @JvmOverloads
-    open fun insertGetId(values: Map<String, Any?>, sequence: String = "id"): Long {
+    @Suppress("unchecked_cast")
+    open fun insertGetId(data: Any, sequence: String = "id"): Long {
+        val values = if (data is Map<*, *>) data as Map<String, Any?> else classToMapForBuilder(data)
         val sql = grammar.compileInsertGetId(this, values, sequence)
         val parameters = values.filter { it.value !is Expression }.keys.sorted().map { values[it] }
         printDebugInfo(sql, parameters)
@@ -1466,7 +1465,8 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun insert(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+    open fun insert(data: Any, batch: Int = 0): Int {
+        val values = transformDataToList(data)
         if (batch != 0) {
             var effected = 0
             values.chunked(batch).forEach {
@@ -1476,6 +1476,24 @@ open class Builder: Cloneable {
         }
         val sql = grammar.compileInsert(this, values)
         return insert(sql, values)
+    }
+
+    @Suppress("unchecked_cast")
+    protected open fun transformDataToList(data: Any): List<Map<String, Any?>> {
+        return when (data) {
+            is Map<*, *> -> listOf(data as Map<String, Any?>)
+            is List<*> -> run {
+                if (data.size == 0) {
+                    throw InvalidArgumentException("list must at least one element")
+                }
+                if (data[0] is Map<*, *>) {
+                    data as List<Map<String, Any?>>
+                } else {
+                    data.map { classToMapForBuilder(it!!) }
+                }
+            }
+            else -> listOf(classToMapForBuilder(data))
+        }
     }
 
     protected open fun insert(sql: String, values: List<Map<String, Any?>>): Int {
@@ -1491,12 +1509,9 @@ open class Builder: Cloneable {
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
     }
 
-    open fun insertOrIgnore(values: Map<String, Any?>): Int {
-        return insertOrIgnore(listOf(values))
-    }
-
     @JvmOverloads
-    open fun insertOrIgnore(values: List<Map<String, Any?>>, batch: Int = 0): Int {
+    open fun insertOrIgnore(data: Any, batch: Int = 0): Int {
+        val values = transformDataToList(data)
         if (batch != 0) {
             var effected = 0
             values.chunked(batch).forEach {
@@ -1508,11 +1523,34 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
-    open fun update(values: Map<String, Any?>): Int {
+    /**
+     *  更新记录，[data]可以是 Map<String, Any> 也可以是数据类的实例, [except] 是要忽略的列，比如批量更新时去掉 id 列
+     *
+     *  @return 影响的条数
+     */
+    @Suppress("unchecked_cast")
+    open fun update(data: Any, except: String? = null): Int {
+        val values = if (data is Map<*, *>) data as Map<String, Any?> else classToMapForBuilder(data)
+        if (except != null) {
+            values as MutableMap
+            values.remove(except)
+        }
         val sql = grammar.compileUpdate(this, values)
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
         printDebugInfo(sql, parameters)
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
+    }
+
+    @JvmOverloads
+    @Suppress("unchecked_cast")
+    open fun updateById(data: Any, idColumn: String = "id"): Int {
+        val values = if (data is Map<*, *>) data as Map<String, Any?> else classToMapForBuilder(data)
+        values as MutableMap
+        if (values.containsKey(idColumn)) {
+            where("$from.id", "=", values[idColumn])
+            values.remove(idColumn)
+        }
+        return update(values)
     }
 
     @JvmOverloads
