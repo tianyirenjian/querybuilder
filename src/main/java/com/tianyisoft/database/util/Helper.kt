@@ -98,7 +98,7 @@ fun classToMapForBuilder(obj: Any): Map<String, Any?> {
 
 fun getAllFields(obj: Class<*>): List<Field> {
     return if (obj.superclass == null) {
-        obj.declaredFields.toMutableList() + getAllFields(obj.superclass)
+        getAllFields(obj.superclass) + obj.declaredFields.toList()
     } else {
         obj.declaredFields.toList()
     }

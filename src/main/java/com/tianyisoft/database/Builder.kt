@@ -1523,24 +1523,19 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
-    /**
-     *  更新记录，[data]可以是 Map<String, Any> 也可以是数据类的实例, [except] 是要忽略的列，比如批量更新时去掉 id 列
-     *
-     *  @return 影响的条数
-     */
     @Suppress("unchecked_cast")
-    open fun update(data: Any, except: String? = null): Int {
-        val values = if (data is Map<*, *>) data as Map<String, Any?> else classToMapForBuilder(data)
-        if (except != null) {
-            values as MutableMap
-            values.remove(except)
-        }
+    open fun update(values: Map<String, Any?>): Int {
         val sql = grammar.compileUpdate(this, values)
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
         printDebugInfo(sql, parameters)
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
     }
 
+    /**
+     *  更新记录，[data]可以是 Map<String, Any> 也可以是数据类的实例, [idColumn] id 字段名
+     *
+     *  @return 影响的条数
+     */
     @JvmOverloads
     @Suppress("unchecked_cast")
     open fun updateById(data: Any, idColumn: String = "id"): Int {
