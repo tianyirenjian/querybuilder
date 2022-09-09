@@ -525,7 +525,7 @@ open class Builder: Cloneable {
 
     protected open fun addMapOfWheres(column: Map<String, Any?>, boolean: String, method: String = "where"): Builder {
         return whereNested({
-            column.forEach { (c, v) -> it::class.memberFunctions.first { f -> f.name == method && f.parameters.size == 5 }.call(it, c, "=", v, boolean) }
+            column.forEach { (c, v) -> it::class.memberFunctions.first { f -> f.name == method && f.parameters.size == 5 }.call(it, c, "=", v, "and") }
         }, boolean)
     }
 
@@ -1523,12 +1523,52 @@ open class Builder: Cloneable {
         return insert(sql, values)
     }
 
+    open fun insertUsing(columns: List<String>, query: Any): Int {
+        val sub = createSub(query)
+        val sql = grammar.compileInsertUsing(this, columns, sub.first)
+        val bindings = cleanBindings(sub.second)
+        printDebugInfo(sql, bindings)
+        return jdbcTemplate!!.update(sql, *bindings.toTypedArray())
+    }
+
     @Suppress("unchecked_cast")
     open fun update(values: Map<String, Any?>): Int {
         val sql = grammar.compileUpdate(this, values)
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
         printDebugInfo(sql, parameters)
         return jdbcTemplate!!.update(sql, *parameters.toTypedArray())
+    }
+
+    open fun updateOrInsert(attributes: Map<String, Any?>, values: Map<String, Any?>): Int {
+        if (!where(attributes).exists()) {
+            return insert(attributes + values)
+        }
+        if (values.isEmpty()) {
+            return 0
+        }
+        return limit(1).update(values)
+    }
+
+    @Suppress("unchecked_cast")
+    open fun upsert(data: Any, update: Map<String, Any?>, uniqueBy: List<String>): Int {
+        val values = when (data) {
+            is Map<*, *> -> {
+                if (data.isEmpty()) return 0
+                listOf(data as Map<String, Any?>)
+            }
+            is List<*> -> {
+                if (data.isEmpty()) return 0
+                data as List<Map<String, Any?>>
+            }
+            else -> {
+                throw InvalidArgumentException("data must be Map<String, Any?> or List<Map<String, Any?>>")
+            }
+        }.toMutableList()
+        if (update.isEmpty()) return insert(values)
+        val sortedUpdate = update.toSortedMap()
+        val sql = grammar.compileUpsert(this, values, sortedUpdate, uniqueBy)
+        values.add(sortedUpdate)
+        return insert(sql, values)
     }
 
     /**

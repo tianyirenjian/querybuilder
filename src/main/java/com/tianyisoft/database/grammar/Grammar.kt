@@ -387,6 +387,10 @@ open class Grammar {
         throw NotImplementedError("not implemented")
     }
 
+    open fun compileInsertUsing(builder: Builder, columns: List<String>, sql: String): String {
+        return "insert into ${wrapTable(builder.from!!)} (${columnize(columns)}) $sql"
+    }
+
     open fun compileUpdate(builder: Builder, values: Map<String, Any?>): String {
         val table = wrapTable(builder.from!!)
         val columns = values.keys.sorted().joinToString(", ") { "${wrap(it)} = ${parameter(values[it])}" }
@@ -419,6 +423,10 @@ open class Grammar {
         }
         parameters.addAll(flatten(cleanBindings))
         return parameters
+    }
+
+    open fun compileUpsert(builder: Builder, values: List<Map<String, Any?>>, update: Map<String, Any?>, uniqueBy: List<String>): String {
+        throw NotImplementedError("not implemented")
     }
 
     open fun compileDelete(builder: Builder): String {
