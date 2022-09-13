@@ -87,7 +87,7 @@ fun classToMapForBuilder(obj: Any): Map<String, Any?> {
     val map = hashMapOf<String, Any?>()
     fields.forEach {
         val annotation = it.getAnnotation(DbField::class.java)
-        val name = if (annotation.name != "") annotation.name else it.name
+        val name = if (annotation.value != "") annotation.value else it.name
         val accessible = it.isAccessible
         it.isAccessible = true
         map[name] = it.get(obj)
