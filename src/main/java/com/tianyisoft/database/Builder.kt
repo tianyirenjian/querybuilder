@@ -1621,6 +1621,21 @@ open class Builder: Cloneable {
             jdbcTemplate!!.update(sql, *binding.toTypedArray())
         }
     }
+    // JdbcTemplate 原本支持的方法
+    open fun queryForList(sql: String, vararg args: Any?): List<Map<String, Any?>> {
+        printDebugInfo(sql, args.toList())
+        return jdbcTemplate!!.queryForList(sql, *args)
+    }
+
+    open fun <T : Any> queryForObject(sql: String, type: Class<T>, vararg args: Any?): T {
+        printDebugInfo(sql, args.toList())
+        return jdbcTemplate!!.queryForObject(sql, type, *args)
+    }
+
+    open fun queryForMap(sql: String, vararg args: Any?): MutableMap<String, Any?> {
+        printDebugInfo(sql, args.toList())
+        return jdbcTemplate!!.queryForMap(sql, *args)
+    }
 
     public override fun clone(): Any {
         val builder = Builder()
