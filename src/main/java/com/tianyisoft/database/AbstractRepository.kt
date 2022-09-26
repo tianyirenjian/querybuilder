@@ -33,7 +33,9 @@ abstract class AbstractRepository {
     }
 
     open fun delete(id: Long): Int {
-        return query().delete(id)
+        return if (beforeDelete(id)) {
+            query().delete(id)
+        } else 0
     }
 
     @JvmOverloads
@@ -52,4 +54,6 @@ abstract class AbstractRepository {
     open fun afterInsert(id: Long) {}
 
     open fun afterUpdate(id: Long, effected: Int) {}
+
+    open fun beforeDelete(id: Long): Boolean = true
 }

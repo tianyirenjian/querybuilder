@@ -1,15 +1,13 @@
 package com.tianyisoft.database.util
 
-import com.tianyisoft.database.annotations.DbField
+import com.tianyisoft.database.Table
+import com.tianyisoft.database.exceptions.InvalidArgumentException
 import java.lang.reflect.Field
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.Collection
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
-
-fun Date.format(format: String = "yyyy-MM-dd HH:mm:ss"): String = SimpleDateFormat(format).format(this)
 
 fun flatten(value: Any?): List<Any?> {
     if (value == null) {
@@ -59,16 +57,6 @@ fun empty(obj: Any?): Boolean {
     }
 }
 
-fun wrapListString(values: Any): List<String> {
-    return when(values) {
-        is String -> listOf(values)
-        is List<*> -> values.map { if (it is String) it else it.toString() }
-        is Array<*> -> values.map { if (it is String) it else it.toString()  }
-        is Set<*> -> values.map { if (it is String) it else it.toString()  }
-        else -> listOf(values.toString())
-    }
-}
-
 fun Any?.toBool(): Boolean {
     return when(val value = this) {
         null -> false
@@ -83,11 +71,13 @@ fun Any?.toBool(): Boolean {
 }
 
 fun classToMapForBuilder(obj: Any): Map<String, Any?> {
-    val fields = getAllFields(obj.javaClass).filter { it.isAnnotationPresent(DbField::class.java) }
+    if (obj !is Table) {
+        throw InvalidArgumentException("object should be instance of com.tianyisoft.database.Table")
+    }
+    val fields = getAllFields(obj.javaClass).filter { it.name in obj.fillable().keys }
     val map = hashMapOf<String, Any?>()
     fields.forEach {
-        val annotation = it.getAnnotation(DbField::class.java)
-        val name = if (annotation.value != "") annotation.value else it.name
+        val name = obj.fillable()[it.name]!!
         val accessible = it.isAccessible
         it.isAccessible = true
         map[name] = it.get(obj)

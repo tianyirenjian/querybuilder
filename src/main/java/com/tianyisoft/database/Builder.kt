@@ -12,9 +12,9 @@ import com.tianyisoft.database.snippets.Snippet
 import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.support.GeneratedKeyHolder
 import kotlin.math.max
+import kotlin.reflect.KClass
 import kotlin.reflect.full.memberFunctions
 
 
@@ -286,7 +286,7 @@ open class Builder: Cloneable {
         if (columns !is String && columns !is List<*> && columns !is Array<*> && columns !is Set<*>) {
             throw InvalidArgumentException("columns must be String or List<String> or Array<String> or Set<String")
         }
-        wrapListString(columns).forEach {
+        wrapList(columns).forEach {
             wheres.add(hashMapOf(
                 "type" to if (not) "NotNull" else "Null",
                 "column" to it,
@@ -300,6 +300,15 @@ open class Builder: Cloneable {
     open fun whereNotNull(column: String, boolean: String = "and") = whereNull(column, boolean, true)
     open fun orWhereNull(column: String) = whereNull(column, "or")
     open fun orWhereNotNull(column: String) = whereNotNull(column, "or")
+
+    private fun wrapList(values: Any): List<String> {
+        return when(values) {
+            is String -> listOf(values)
+            is Collection<*> -> values.map { if (it is String) it else it.toString() }
+            is Array<*> -> values.map { if (it is String) it else it.toString()  }
+            else -> listOf(values.toString())
+        }
+    }
 
     @JvmOverloads
     open fun whereRaw(sql: String, bindings: List<Any?>, boolean: String = "and"): Builder {
@@ -909,9 +918,8 @@ open class Builder: Cloneable {
         return result
     }
 
-    @Suppress("UNCHECKED_CAST")
-    open fun <T : Any> get(rowMapper: RowMapper<T>): List<T> {
-        return runSelect<T>(rowMapper) as List<T>
+    open fun <T: Any> get(clazz: KClass<T>): List<T> {
+        return get(clazz.java)
     }
 
     open fun <T : Any> get(klass: Class<T>): List<T> {
@@ -1034,29 +1042,22 @@ open class Builder: Cloneable {
 
     @JvmOverloads
     open fun paginate(page: Int = 1, pageSize: Int = 15): Page {
-        return paginate<Map<String,Any?>>(null, null, page, pageSize)
-    }
-
-    @JvmOverloads
-    open fun <T : Any> paginate(rowMapper: RowMapper<T>, page: Int = 1, pageSize: Int = 15): Page {
-        return paginate(rowMapper, null, page, pageSize)
-    }
-
-    @JvmOverloads
-    open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page {
-        return paginate(null, klass, page, pageSize)
-    }
-
-    protected open fun <T: Any> paginate(rowMapper: RowMapper<T>? = null, klass: Class<T>? = null, page: Int = 1, pageSize: Int = 15): Page{
         val total = getCountForPagination()
         val results = if (total > 0) {
-            if (rowMapper != null) {
-                forPage(page, pageSize).get(rowMapper)
-            } else if (klass != null) {
+            forPage(page, pageSize).get()
+        } else {
+            listOf()
+        }
+        return Page.new(page, pageSize, total, results)
+    }
+
+    open fun <T: Any> paginate(clazz: KClass<T>, page: Int = 1, pageSize: Int = 15) = paginate(clazz.java, page, pageSize)
+
+    @JvmOverloads
+    open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page{
+        val total = getCountForPagination()
+        val results = if (total > 0) {
                 forPage(page, pageSize).get(klass)
-            } else {
-                forPage(page, pageSize).get()
-            }
         } else {
             listOf()
         }
@@ -1099,14 +1100,11 @@ open class Builder: Cloneable {
         log.debug("- bindings: $bindings")
     }
 
-    protected open fun <T : Any> runSelect(rowMapper: RowMapper<T>? = null): List<Any> {
+    protected open fun <T : Any> runSelect(): List<Any> {
         val sql = toSql()
         val bindings = getFlattenBindings()
         printDebugInfo(sql, bindings)
-        if (rowMapper == null) {
-            return jdbcTemplate!!.queryForList(sql, *bindings.toTypedArray())
-        }
-        return jdbcTemplate!!.query(sql, rowMapper, *bindings.toTypedArray())
+        return jdbcTemplate!!.queryForList(sql, *bindings.toTypedArray())
     }
 
     open fun exists(): Boolean {
@@ -1213,9 +1211,7 @@ open class Builder: Cloneable {
         return take(1).get().firstOrNull()
     }
 
-    open fun <T: Any> first(rowMapper: RowMapper<T>): T? {
-        return take(1).get(rowMapper).firstOrNull()
-    }
+    open fun <T: Any> first(clazz: KClass<T>) = first(clazz.java)
 
     open fun <T: Any> first(klass: Class<T>): T? {
         return take(1).get(klass).firstOrNull()
@@ -1241,9 +1237,7 @@ open class Builder: Cloneable {
         return where("id", "=", id).first()
     }
 
-    open fun <T: Any> find(id: Any, rowMapper: RowMapper<T>): T? {
-        return where("id", "=", id).first(rowMapper)
-    }
+    open fun <T: Any> find(id: Any, clazz: KClass<T>) = find(id, clazz.java)
 
     open fun <T: Any> find(id: Any, klass: Class<T>): T? {
         return where("id", "=", id).first(klass)
@@ -1254,10 +1248,7 @@ open class Builder: Cloneable {
         return getSole(records)
     }
 
-    open fun <T: Any> sole(rowMapper: RowMapper<T>): T {
-        val records = take(2).get(rowMapper)
-        return getSole(records)
-    }
+    open fun <T: Any> sole(clazz: KClass<T>) = sole(clazz.java)
 
     open fun <T: Any> sole(klass: Class<T>): T {
         val records = take(2).get(klass)
@@ -1284,32 +1275,33 @@ open class Builder: Cloneable {
     }
 
     open fun chunk(count: Int, callback:(List<Map<String, Any?>>, Int) -> Boolean): Boolean {
-        return chunk(null, null, count, callback)
-    }
-
-    open fun <T: Any> chunk(rowMapper: RowMapper<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
-        return chunk(rowMapper, null, count, callback)
-    }
-
-    open fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
-        return chunk(null, klass, count, callback)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    protected open fun <T: Any> chunk(rowMapper: RowMapper<T>?, klass: Class<T>?, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
         do {
-            val results = if (rowMapper != null) {
-                forPage(page, count).get(rowMapper)
-            } else if (klass != null) {
-                forPage(page, count).get(klass)
-            } else {
-                forPage(page, count).get()
-            }
+            val results = forPage(page, count).get()
             val countResult = results.size
             if (countResult == 0) break
-            if (!callback(results as List<T>, page)) {
+            if (!callback(results, page)) {
+                return false
+            }
+            page ++
+        } while (count == countResult)
+        return true
+    }
+
+    open fun <T: Any> chunk(clazz: KClass<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+        return chunk(clazz.java, count, callback)
+    }
+
+    @Suppress("unchecked_cast")
+    open fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
+        enforceOrderBy()
+        var page = 1
+        do {
+            val results = forPage(page, count).get(klass)
+            val countResult = results.size
+            if (countResult == 0) break
+            if (!callback(results, page)) {
                 return false
             }
             page ++
@@ -1328,15 +1320,8 @@ open class Builder: Cloneable {
         }
     }
 
-    open fun <T: Any> each(rowMapper: RowMapper<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
-        return chunk(rowMapper, count) { rows, page ->
-            rows.forEachIndexed { index, row ->
-                if (!callback(row, (page - 1) * count + index)) {
-                    return@chunk false
-                }
-            }
-            true
-        }
+    open fun <T: Any> each(clazz: KClass<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
+        return each(clazz.java, callback, count)
     }
 
     open fun <T: Any> each(klass: Class<T>, callback: (T, Int) -> Boolean, count: Int = 1000): Boolean {
@@ -1531,6 +1516,10 @@ open class Builder: Cloneable {
         return jdbcTemplate!!.update(sql, *bindings.toTypedArray())
     }
 
+    /**
+     * 更新记录，可以结合 where 条件更新多条数据, 没有任何 where 条件则会更新整个表!
+     * 特意不支持 [com.tianyisoft.database.Table] 的实例, 因为可能更新多条，和 Table 代表一条数据的意义冲突
+     * */
     @Suppress("unchecked_cast")
     open fun update(values: Map<String, Any?>): Int {
         val sql = grammar.compileUpdate(this, values)
@@ -1572,19 +1561,14 @@ open class Builder: Cloneable {
     }
 
     /**
-     *  更新记录，[data]可以是 Map<String, Any> 也可以是数据类的实例, [idColumn] id 字段名
+     *  更新记录，[data]可以是 Map<String, Any> 也可以是 [com.tianyisoft.database.Table] 类的实例
      *
      *  @return 影响的条数
      */
-    @JvmOverloads
     @Suppress("unchecked_cast")
-    open fun updateById(data: Any, idColumn: String = "id"): Int {
+    open fun updateById(id: Any, data: Any): Int {
         val values = if (data is Map<*, *>) data as Map<String, Any?> else classToMapForBuilder(data)
-        values as MutableMap
-        if (values.containsKey(idColumn)) {
-            where("$from.id", "=", values[idColumn])
-            values.remove(idColumn)
-        }
+        where("$from.id", "=", id)
         return update(values)
     }
 
