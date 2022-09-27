@@ -297,9 +297,9 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun whereNotNull(column: String, boolean: String = "and") = whereNull(column, boolean, true)
-    open fun orWhereNull(column: String) = whereNull(column, "or")
-    open fun orWhereNotNull(column: String) = whereNotNull(column, "or")
+    open fun whereNotNull(column: Any, boolean: String = "and") = whereNull(column, boolean, true)
+    open fun orWhereNull(column: Any) = whereNull(column, "or")
+    open fun orWhereNotNull(column: Any) = whereNotNull(column, "or")
 
     private fun wrapList(values: Any): List<String> {
         return when(values) {
@@ -644,13 +644,12 @@ open class Builder: Cloneable {
             return orderBy(Expression(sub.first), direction)
         }
 
-        val lowerDirection = direction.lowercase()
-        if (lowerDirection !in listOf("asc", "desc")) {
+        if (direction.lowercase() !in listOf("asc", "desc")) {
             throw InvalidArgumentException("Order direction must be \"asc\" or \"desc\".")
         }
         val order = hashMapOf(
             "column" to column,
-            "direction" to lowerDirection
+            "direction" to direction
         )
         if (this.unions.isEmpty()) {
             orders.add(order)
