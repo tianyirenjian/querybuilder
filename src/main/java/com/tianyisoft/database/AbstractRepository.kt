@@ -1,10 +1,14 @@
 package com.tianyisoft.database
 
 import org.springframework.jdbc.core.JdbcTemplate
+import java.util.Date
 
 abstract class AbstractRepository {
     protected abstract val table: String
     protected abstract val dbTemplate: JdbcTemplate
+    protected open val timestamps = false
+    protected open val createdColumn = "created_at"
+    protected open val updatedColumn = "updated_at"
 
     open fun builder(): Builder {
         val builder = Builder()
@@ -20,11 +24,11 @@ abstract class AbstractRepository {
         }
     }
 
-    open fun find(id: Long): Map<String, Any?>? {
+    open fun find(id: Any): Map<String, Any?>? {
         return query().find(id)
     }
 
-    open fun update(id: Long, data: Map<String, Any?>): Int {
+    open fun update(id: Any, data: Map<String, Any?>): Int {
         data as MutableMap
         val params = beforeUpdate(data)
         return query().where("id", "=", id).update(params).also {
@@ -32,9 +36,11 @@ abstract class AbstractRepository {
         }
     }
 
-    open fun delete(id: Long): Int {
+    open fun delete(id: Any): Int {
         return if (beforeDelete(id)) {
-            query().delete(id)
+            query().delete(id).also {
+                afterDelete(id, it)
+            }
         } else 0
     }
 
@@ -43,17 +49,27 @@ abstract class AbstractRepository {
         return builder().table(table, alias)
     }
 
-    open fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
+    protected open fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
+        if (timestamps) {
+            val now =  Date()
+            params[createdColumn] = now
+            params[updatedColumn] = now
+        }
         return params
     }
 
-    open fun beforeUpdate(params: MutableMap<String, Any?>): Map<String, Any?> {
+    protected open fun afterInsert(id: Long) {}
+
+    protected open fun beforeUpdate(params: MutableMap<String, Any?>): Map<String, Any?> {
+        if (timestamps) {
+            params[updatedColumn] = Date()
+        }
         return params
     }
 
-    open fun afterInsert(id: Long) {}
+    protected open fun afterUpdate(id: Any, effected: Int) {}
 
-    open fun afterUpdate(id: Long, effected: Int) {}
+    protected open fun beforeDelete(id: Any): Boolean = true
 
-    open fun beforeDelete(id: Long): Boolean = true
+    protected open fun afterDelete(id: Any, effected: Int) {}
 }
