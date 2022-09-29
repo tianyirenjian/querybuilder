@@ -402,7 +402,7 @@ val users = builder.table("users")
 
 除了给 `where` 方法的最后一个参数传 or 之外，也可以直接使用 `orWhere` 方法。用法同 `where`
 
-```
+```kotlin
 // select * from `users` where `name` = ? or (`age` < ? and `score` > ? and `name` like ?)
 val users = builder.table("users")
     .where("name", "=", "Tom")
@@ -668,7 +668,7 @@ val users = builder.table("users")
 
 自 1.0.7 版本开始，支持传入 `com.tianyisoft.database.Table` 子类的实例, `Table` 类通过实现 `fillable` 方法来控制要添加或修改的字段, 具体可见 `Table` 类源码
 
-```
+```kotlin
 val rows = builder.table("users")
     .insert(hashMapOf(
         "name" to "tom",
@@ -778,9 +778,11 @@ userRepository.delete(id)
 userRepository.query().where("id", ">", 3).orWhere("age", "<", 10).get()
 ```
 
-`AbstractRepository` 还提供了简单的 `beforeInsert`， `afterInsert`, `beforeUpdate`, `afterUpdate` 和 `beforeDelete` 方法用于在增加和修改数据前后做一些操作. 可以通过继承方法使用它们。
+`AbstractRepository` 还提供了简单的 `beforeInsert`， `afterInsert`, `beforeUpdate`, `afterUpdate`, `beforeDelete` 和 `afterDelete` 方法用于在操作数据前后做一些操作. 可以通过继承方法使用它们。
 
 比如增加数据前要设置 `created_at` 和 `updated_at` 的值。
+
+这个功能只对 `AbstractRepository` 自有的方法有作用，通过 `query()` 调用的操作不起作用
 
 ```kotlin
 override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
@@ -790,6 +792,10 @@ override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
     return params
 }
 ```
+
+上面提到了设置 `created_at` 和 `updated_at` 的值, 还有更直接的办法来完成这个操作，继承 `AbstractRepository` 并重写父类的 `timestamps` 值为 `true` 就可以自动插入这两列的值，还可能通过重写 `createdColumn` 和 `updatedColumn` 来修改字段名。
+
+同样的，这个功能只对 `AbstractRepository` 自有的方法有作用，通过 `query()` 调用的操作不起作用
 
 ### Relation 关联
 
