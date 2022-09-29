@@ -54,30 +54,21 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper
 
 val users = builder.table("users").get() // List<Map<String, Any?>>
 
-val users = builder.table("users").get(
-    BeanPropertyRowMapper(User::class.java)
-) // List<User>
-
 val users = builder.table("users").get(User::class.java) // List<User>
 ```
 
-`get` 可以获取 `List<Map<String, Any?>>` 的结果集，也可以用 `get` 通过 `RowMapper` 或者 `Class<T>` 获取 `List<T>` 的结果集。
+`get` 可以获取 `List<Map<String, Any?>>` 的结果集，也可以用 `get` 通过 `KClass<T>` 或者 `Class<T>` 获取 `List<T>` 的结果集。
 
-`RowMapper` 使用 `JdbcTemplate` 内置的转换方法, 而 `Class<T>` 的则是使用 jackson 来实现，所以如果数据库和字段名称不一致，可以使用 `@JsonProperty` 来标示.
+使用 `Class<T>` 获取对象是使用 jackson 来实现，所以如果数据库和字段名称不一致，可以使用 `@JsonProperty` 来标示.
 
 #### 获取单行或单列
 
 可以使用 `first` 方法获取第一条结果
 
 ```kotlin
-
 import org.springframework.jdbc.core.BeanPropertyRowMapper
 
 val user = builder.table("users").first() // Map<String, Any?>
-
-val user = builder.table("users").first(
-    BeanPropertyRowMapper(User::class.java)
-) // User
 
 val user = builder.table("users").first(User::class.java) // User
 ```
@@ -155,7 +146,7 @@ builder.table("apps").eachById({row, index ->
 ```
 
 
-`chunk` 和 `each` 返回的数据都是 `Map` 类型的，也可以传入 `RowMapper` 或 `Class<T>` 方法来返回对象。 `chunkById` 和 `eachById` 暂时没有对应的方法。
+`chunk` 和 `each` 返回的数据都是 `Map` 类型的，也可以传入 `KClass<T>` 或 `Class<T>` 方法来返回对象。 `chunkById` 和 `eachById` 暂时没有对应的方法。
 
 ```kotlin
 builder.table("apps").select("id", "name").orderBy("id")
@@ -637,7 +628,7 @@ val page = builder.table("users")
     .paginate()
 ```
 
-`paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `RowMapper` 或 `Class<T>` 来返回对象类型
+`paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `KClass<T>` 或 `Class<T>` 来返回对象类型
 
 ### 条件语句
 
@@ -674,6 +665,8 @@ val users = builder.table("users")
 `insert`, `insertGetId` 和 `insertOrIgnore` 用于给数据库插入记录
 
 `insert` 支持单条插入和多条插入，多条插入还可以设置分批插入,单条插入的参数是 `Map<String, Any?>` 类型，多条插入则是 `List<Map<String, Any?>>`，返回的是插入成功的条数
+
+自 1.0.7 版本开始，支持传入 `com.tianyisoft.database.Table` 子类的实例, `Table` 类通过实现 `fillable` 方法来控制要添加或修改的字段, 具体可见 `Table` 类源码
 
 ```
 val rows = builder.table("users")
@@ -785,7 +778,7 @@ userRepository.delete(id)
 userRepository.query().where("id", ">", 3).orWhere("age", "<", 10).get()
 ```
 
-`AbstractRepository` 还提供了简单的 `beforeInsert`， `afterInsert`, `beforeUpdate` 和 `afterUpdate` 方法用于在增加和修改数据前后做一些操作. 可以通过继承方法使用它们。
+`AbstractRepository` 还提供了简单的 `beforeInsert`， `afterInsert`, `beforeUpdate`, `afterUpdate` 和 `beforeDelete` 方法用于在增加和修改数据前后做一些操作. 可以通过继承方法使用它们。
 
 比如增加数据前要设置 `created_at` 和 `updated_at` 的值。
 
