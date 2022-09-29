@@ -797,6 +797,45 @@ override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
 
 同样的，这个功能只对 `AbstractRepository` 自有的方法有作用，通过 `query()` 调用的操作不起作用
 
+### Snippet 代码片段
+
+有时相同的一些查询条件会多次使用，这时可以写成代码片段，然后在使用时通过 `use` 方法调用
+
+使用代码片段的方法是实现 `Snippet` 接口,比如常用的查询状态的条件可以写一个代码片段
+
+```kotlin
+class StatusSnippet : Snippet {
+    override fun apply(builder: Builder, vararg params: Any?) {
+        if (params.size == 1) { // 如果有一个参数，直接查询 status
+            builder.where("status", "=", params[0])
+        } else if (params.size == 2) { // 如果有两个参数，则第一个是状态的字段名
+            builder.where(params[0] as String, "=", params[1])
+        }
+    }
+}
+
+// 或者直接生成一个对象, 是一样的
+
+val statusSnippet = Snippet { builder, params ->
+    if (params.size == 1) {
+        builder.where("status", "=", params[0])
+    } else if (params.size == 2) {
+        builder.where(params[0] as String, "=", params[1])
+    }
+}
+
+```
+
+这样就创建完一个代码段了，在需要的时候直接使用 `use` 方法，并传入参数即可
+
+```kotlin
+builder.table("users").use(StatusSnippet(), 1).get()
+// 或者当参数名不叫 status 时, 比如叫 state
+builder.table("users").use(StatusSnippet(), "state", 1).get()
+```
+
+实际上 statusSnippet 已经提供了，还有一个 deletedSnippet 供使用，用来判断是不是软删除的
+
 ### Relation 关联
 
 因为 QueryBuilder 并不是 orm 框架，所以实现关联也没有和类的字段关联起来，而是直接生成一个关联的实例来使用。
