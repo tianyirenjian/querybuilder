@@ -9,7 +9,6 @@ import java.util.*
 object JsonBuilder {
     fun build(): ObjectMapper {
         val simpleModule = SimpleModule()
-        simpleModule.addDeserializer(Date::class.java, DateDeserializer())
         simpleModule.addSerializer(LocalDateTime::class.java, LocalDateTimeSerializer())
         simpleModule.addDeserializer(LocalDateTime::class.java, LocalDateTimeDeserializer())
 
