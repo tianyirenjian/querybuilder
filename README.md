@@ -1,6 +1,6 @@
 # QueryBuilder
 
-数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是某些复杂参数的函数可能无法调用。
+数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是某些复杂参数的函数可能无法简单调用， 需要使用 kotlin 内部的类型。
 
 也可以使用 kotlin 来写 Repository 层调用，然后供其他的 java 代码直接调用方法。
 
@@ -12,14 +12,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.8</version>
+  <version>1.0.9</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.8'
+implementation 'com.tianyisoft.database:querybuilder:1.0.9'
 ```
 
 ### 使用说明
