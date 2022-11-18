@@ -1063,6 +1063,18 @@ open class Builder: Cloneable {
         return Page.new(page, pageSize, total, results)
     }
 
+    open fun <T : Any> paginateT(clazz: KClass<T>, page: Int, pageSize: Int): PageT<T> = paginateT(clazz.java, page, pageSize)
+
+    open fun <T: Any> paginateT(klass: Class<T>, page: Int = 1, pageSize: Int = 15): PageT<T> {
+        val total = getCountForPagination()
+        val results = if (total > 0) {
+            forPage(page, pageSize).get(klass)
+        } else {
+            listOf()
+        }
+        return PageT.new(page, pageSize, total, results)
+    }
+
     protected open fun getCountForPagination(): Long {
         val result = runPaginationCountQuery()
         if (result.isEmpty()) return 0

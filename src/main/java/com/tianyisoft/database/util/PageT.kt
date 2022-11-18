@@ -2,14 +2,14 @@ package com.tianyisoft.database.util
 
 import kotlin.math.ceil
 
-class Page: java.io.Serializable {
-    var data: List<Any> = ArrayList()
+class PageT<T>: java.io.Serializable {
+    var data: List<T> = ArrayList()
     var meta: Meta = Meta()
 
     companion object {
         @JvmStatic
-        fun new(page: Int, pageSize: Int, total: Long, data: List<Any>): Page {
-            val p = Page()
+        fun <T> new(page: Int, pageSize: Int, total: Long, data: List<T>): PageT<T> {
+            val p = PageT<T>()
             p.data = data
             with(p.meta) {
                 current = page
