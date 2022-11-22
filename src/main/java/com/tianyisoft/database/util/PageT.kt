@@ -7,6 +7,8 @@ class PageT<T>: java.io.Serializable {
     var meta: Meta = Meta()
 
     companion object {
+        private const val serialVersionUID: Long = 198912190702L
+
         @JvmStatic
         fun <T> new(page: Int, pageSize: Int, total: Long, data: List<T>): PageT<T> {
             val p = PageT<T>()
