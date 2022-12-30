@@ -632,9 +632,9 @@ val page = builder.table("users")
 
 1.0.10 版本后添加了支持泛型的 `paginateT` 方法, 返回 `PageT` 类型
 
-```kotlin
 
 ### 条件语句
+
 
 有时候查询列表需要根据前台传过来的值来决定要不要使用某列进行筛选，这时可以使用 `ifTrue`, `whenTrue`, `ifFalse`, `whenFalse` 方法来处理，`if` 和 `when` 开头的方法是等价的
 
