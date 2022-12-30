@@ -12,14 +12,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.10</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.10'
+implementation 'com.tianyisoft.database:querybuilder:1.1.0'
 ```
 
 ### 使用说明
@@ -150,7 +150,7 @@ builder.table("apps").eachById({row, index ->
 
 ```kotlin
 builder.table("apps").select("id", "name").orderBy("id")
-    .each(BeanPropertyRowMapper(Apps::class.java), { app, index ->
+    .each(Apps::class.java, { app, index ->
         println(app)
         true
     })
@@ -629,6 +629,10 @@ val page = builder.table("users")
 ```
 
 `paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `KClass<T>` 或 `Class<T>` 来返回对象类型
+
+1.0.10 版本后添加了支持泛型的 `paginateT` 方法, 返回 `PageT` 类型
+
+```kotlin
 
 ### 条件语句
 
