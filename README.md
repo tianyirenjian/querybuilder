@@ -1097,7 +1097,7 @@ WHERE (
 ) >= ?
 */
 builder.table("user")
-    .whereHas(BelongsToMany("permission", "permission_user", "user_id", "permission_id", ">=", 3)
+    .whereHas(BelongsToMany("permission", "permission_user", "user_id", "permission_id"), ">=", 3)
     .get()
 ```
 
