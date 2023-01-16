@@ -204,18 +204,27 @@ val names = builder.table("users").select("name").distinct().get()
 有时可能需要在查询中插入任意字符串。可以使用原生表达式 `Expression`
 
 ```kotlin
-val users = builder.table("users").select("id", Expression("upper(name)")).get()
+val users = builder.table("users").select("id", Expression("upper(name) as upper_name")).get()
 ```
 
 使用 `Expression` 会直接把字符串附加到 sql 语句，因此要注意可能会有 sql 注入风险
 
-下面有几个方法可以代替 `Expression`
+下面有几个方法可以代替 `Expression`, 下面所有方法的第二个参数都可以传一个存放绑定值的 list, 也可以使用不定参数的重载方法。使用这几个方法可以避免 sql 注入风险
 
 #### `selectRaw`
 
 ```kotlin
 val users = builder.table("users")
     .selectRaw("id, upper(name), score * ? as double_score", listOf(2))
+    .get()
+```
+
+#### `fromRaw`
+
+```kotlin
+// select * from (select * from users where age < ?) as u
+val youngUser = builder
+    .fromRaw("(users where age < ?) as u", listOf(18))
     .get()
 ```
 

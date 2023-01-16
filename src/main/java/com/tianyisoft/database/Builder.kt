@@ -92,6 +92,8 @@ open class Builder: Cloneable {
         return this
     }
 
+    open fun selectRaw(fields: String, vararg bindings: Any?): Builder = selectRaw(fields, bindings.toList())
+
     open fun addSelect(vararg fields: Any): Builder {
         fields.forEach {
             columns.add(it)
@@ -133,6 +135,9 @@ open class Builder: Cloneable {
         addBinding(bindings, "from")
         return this
     }
+
+    open fun fromRaw(expression: String, vararg bindings: Any?): Builder = fromRaw(expression, bindings.toList())
+
     open fun fromSub(queryOrClosure: Any, alias: String): Builder {
         val sub = createSub(queryOrClosure)
         return fromRaw("(${sub.first}) as ${grammar.wrapTable(alias)}", sub.second)
@@ -344,7 +349,11 @@ open class Builder: Cloneable {
         return this
     }
 
+    open fun whereRaw(sql: String, vararg bindings: Any?): Builder = whereRaw(sql, bindings.toList())
+
     open fun orWhereRaw(sql: String, bindings: List<Any?>) = whereRaw(sql, bindings, "or")
+
+    open fun orWhereRaw(sql: String, vararg bindings: Any?) = whereRaw(sql, bindings.toList(), "or")
 
     @JvmOverloads
     open fun whereIn(column: String, values: Any, boolean: String = "and", not: Boolean = false): Builder {
@@ -611,6 +620,8 @@ open class Builder: Cloneable {
         return this
     }
 
+    open fun groupByRaw(sql: String, vararg bindings: Any?): Builder = groupByRaw(sql, bindings.toList())
+
     @JvmOverloads
     open fun having(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
         havings.add(hashMapOf(
@@ -654,10 +665,12 @@ open class Builder: Cloneable {
         return this
     }
 
+    open fun havingRaw(sql: String, vararg bindings: Any?): Builder = havingRaw(sql, bindings.toList())
+
     @JvmOverloads
-    open fun orHavingRaw(sql: String, bindings: List<Any?> = listOf()): Builder {
-        return havingRaw(sql, bindings, "or")
-    }
+    open fun orHavingRaw(sql: String, bindings: List<Any?> = listOf()): Builder = havingRaw(sql, bindings, "or")
+
+    open fun orHavingRaw(sql: String, vararg bindings: Any?): Builder = havingRaw(sql, bindings.toList(), "or")
 
     @JvmOverloads
     open fun orderBy(column: Any, direction: String = "asc"): Builder {
@@ -713,6 +726,8 @@ open class Builder: Cloneable {
         }
         return this
     }
+
+    open fun orderByRaw(sql: String, vararg bindings: Any?): Builder = orderByRaw(sql, bindings.toList())
 
     @JvmOverloads
     open fun reorder(column: String? = null, direction: String = "asc"): Builder {
