@@ -12,14 +12,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.0.10</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.0.10'
+implementation 'com.tianyisoft.database:querybuilder:1.1.0'
 ```
 
 ### 使用说明
@@ -150,7 +150,7 @@ builder.table("apps").eachById({row, index ->
 
 ```kotlin
 builder.table("apps").select("id", "name").orderBy("id")
-    .each(BeanPropertyRowMapper(Apps::class.java), { app, index ->
+    .each(Apps::class.java, { app, index ->
         println(app)
         true
     })
@@ -211,7 +211,7 @@ val users = builder.table("users").select("id", Expression("upper(name)")).get()
 
 下面有几个方法可以代替 `Expression`
 
-`selectRaw`
+#### `selectRaw`
 
 ```kotlin
 val users = builder.table("users")
@@ -219,7 +219,7 @@ val users = builder.table("users")
     .get()
 ```
 
-`whereRaw / orWhereRaw`
+#### `whereRaw / orWhereRaw`
 
 ```kotlin
 val users = builder.table("users")
@@ -227,7 +227,7 @@ val users = builder.table("users")
     .get()
 ```
 
-`havingRaw / orHavingRaw`
+#### `havingRaw / orHavingRaw`
 
 ```kotlin
 // select department, SUM(price) as total_sales from `orders` group by `department` having SUM(price) > ?
@@ -238,7 +238,7 @@ builder.table("orders")
     .get();
 ```
 
-`orderByRaw`
+#### `orderByRaw`
 
 ```kotlin
 builder.table("users")
@@ -246,7 +246,7 @@ builder.table("users")
     .get()
 ```
 
-`groupByRaw`
+#### `groupByRaw`
 
 ```kotlin
 builder.table("users")
@@ -412,7 +412,9 @@ val users = builder.table("users")
 
 #### 其他 where 语句
 
-`whereBetween` / `orWhereBetween` / `whereNotBetween` / `orWhereNotBetween` 验证 between 关系。意义不同，但用法都一样
+##### `whereBetween` / `orWhereBetween` / `whereNotBetween` / `orWhereNotBetween`
+
+验证 between 关系。意义不同，但用法都一样
 
 ```kotlin
 // select * from `users` where `age` between ? and ?
@@ -421,7 +423,9 @@ val users = builder.table("users")
     .get()
 ```
 
-`whereIn` / `whereNotIn` / `orWhereIn` / `orWhereNotIn` 验证 in 关系
+##### `whereIn` / `whereNotIn` / `orWhereIn` / `orWhereNotIn`
+
+验证 in 关系
 
 ```kotlin
 // select * from `users` where `name` in (?, ?)
@@ -430,7 +434,7 @@ val users = builder.table("users")
     .get()
 ```
 
-`whereNull` / `whereNotNull` / `orWhereNull` / `orWhereNotNull`
+##### `whereNull` / `whereNotNull` / `orWhereNull` / `orWhereNotNull`
 
 ```kotlin
 // select * from `users` where `deleted_at` is null
@@ -439,7 +443,7 @@ val users = builder.table("users")
     .get()
 ```
 
-`whereNot` / `orWhereNot`
+##### `whereNot` / `orWhereNot`
 
 ```kotlin
 // select * from `users` where not `banned` = ?
@@ -448,7 +452,9 @@ val users = builder.table("users")
   .get()
 ```
 
-`whereDate` / `whereMonth` / `whereDay` / `whereYear` / `whereTime` 用来比较时间
+##### `whereDate` / `whereMonth` / `whereDay` / `whereYear` / `whereTime`
+
+用来比较时间
 
 ```kotlin
 // select * from `users` where year(`created_at`) = ?
@@ -457,7 +463,9 @@ val users = builder.table("users")
     .get()
 ```
 
-`whereColumn` / `orWhereColumn` 用于比较两个列
+##### `whereColumn` / `orWhereColumn`
+
+用于比较两个列
 
 ```kotlin
 // select * from `users` where `created_at` < `updated_at`
@@ -531,7 +539,7 @@ val users = builder.table("users")
 
 #### 排序
 
-`orderBy` 方法
+##### `orderBy` 方法
 
 `orderBy` 方法允许按给定列对查询结果进行排序。`orderBy` 接受的第一个参数应该是排序的列，而第二个参数确定排序的方向，可以是 `asc` 或 `desc`,默认是 `asc`
 
@@ -551,7 +559,7 @@ val users = builder.table("users")
     .get()
 ```
 
-`latest` 和 `oldest` 方法
+##### `latest` 和 `oldest` 方法
 
 使用 `latest` 和 `oldest` 方法可以按照日期进行 `desc` / `asc` 排序，默认使用 `created_at` 字段进行排序，也可以自己传递要使用的字段
 
@@ -562,7 +570,7 @@ val users = builder.table("users")
     .get()
 ```
 
-随机排序
+##### 随机排序
 
 使用 `inRandomOrder` 方法可以交查询结果随机排序
 
@@ -572,7 +580,7 @@ val users = builder.table("users")
     .get()
 ```
 
-移除已存在的排序
+##### 移除已存在的排序
 
 使用 `reorder` 方法可以移除已存在的排序,也可以传递参数像使用 `orderBy` 一样重新指定排序
 
@@ -586,7 +594,7 @@ val users = builder.table("users")
 
 #### 分组
 
-`groupBy` 和 `having` 方法
+##### `groupBy` 和 `having` 方法
 
 `groupBy` 和 `having` 方法可以将查询结果分组。`having` 方法的使用方法类似于 `where` 方法。 `groupBy` 可以接受多个分组参数
 
@@ -630,7 +638,11 @@ val page = builder.table("users")
 
 `paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `KClass<T>` 或 `Class<T>` 来返回对象类型
 
+1.0.10 版本后添加了支持泛型的 `paginateT` 方法, 返回 `PageT` 类型
+
+
 ### 条件语句
+
 
 有时候查询列表需要根据前台传过来的值来决定要不要使用某列进行筛选，这时可以使用 `ifTrue`, `whenTrue`, `ifFalse`, `whenFalse` 方法来处理，`if` 和 `when` 开头的方法是等价的
 
@@ -1093,7 +1105,7 @@ WHERE (
 ) >= ?
 */
 builder.table("user")
-    .whereHas(BelongsToMany("permission", "permission_user", "user_id", "permission_id", ">=", 3)
+    .whereHas(BelongsToMany("permission", "permission_user", "user_id", "permission_id"), ">=", 3)
     .get()
 ```
 
