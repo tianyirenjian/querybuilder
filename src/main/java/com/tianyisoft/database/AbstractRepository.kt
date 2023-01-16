@@ -21,6 +21,7 @@ abstract class AbstractRepository {
         val params = beforeInsert(data)
         return query().insertGetId(params).also {
             afterInsert(it)
+            afterInsert(it, data)
         }
     }
 
@@ -33,6 +34,7 @@ abstract class AbstractRepository {
         val params = beforeUpdate(data)
         return query().where("id", "=", id).update(params).also {
             afterUpdate(id, it)
+            afterUpdate(id, it, data)
         }
     }
 
@@ -59,6 +61,8 @@ abstract class AbstractRepository {
     }
 
     protected open fun afterInsert(id: Long) {}
+    // 比如添加完成要添加日志的话，就可以用这个，不用再查一次数据库, 下面的 update 也是
+    protected open fun afterInsert(id: Long, data: Map<String, Any?>) {}
 
     protected open fun beforeUpdate(params: MutableMap<String, Any?>): Map<String, Any?> {
         if (timestamps) {
@@ -68,6 +72,7 @@ abstract class AbstractRepository {
     }
 
     protected open fun afterUpdate(id: Any, effected: Int) {}
+    protected open fun afterUpdate(id: Any, effected: Int, data: Map<String, Any?>) {}
 
     protected open fun beforeDelete(id: Any): Boolean = true
 
