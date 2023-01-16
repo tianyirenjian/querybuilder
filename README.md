@@ -846,7 +846,23 @@ builder.table("users").use(StatusSnippet(), 1).get()
 builder.table("users").use(StatusSnippet(), "state", 1).get()
 ```
 
-实际上 statusSnippet 已经提供了，还有一个 deletedSnippet 供使用，用来判断是不是软删除的
+实际上 statusSnippet 已经提供了，可以直接使用
+
+### 软删除
+
+QueryBuilder 提供了软删除的功能，可以通过 `enableSoftDelete` 方法来开启，支持定义软删除的字段和类型，目前支持时间和数字两种类型
+
+```kotlin
+builder.table("users").enableSoftDelete().get() // 默认是 deleted_at 字段，类型是时间
+
+builder.table("users").enableSoftDelete("deleted_at", DeletedDataType.DATETIME).get() // 指定字段名和类型
+
+builder.table("users").enableSoftDelete("deleted", DeletedDataType.INTEGER).get() // 指定字段名和类型, 类型为数字型
+```
+
+时间类型会在 sql 中使用 `is null` 来判断是否删除，数字类型会使用 `= 0` 来判断是否删除
+
+软删除会对查询，修改和删除操作起作用， 开启了软删除后，查询和修改会自动加上软删除的条件，删除会自动更新软删除字段的值
 
 ### Relation 关联
 
