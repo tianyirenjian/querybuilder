@@ -1,5 +1,6 @@
 package com.tianyisoft.database
 
+import com.tianyisoft.database.enums.DeletedDataType
 import com.tianyisoft.database.exceptions.InvalidArgumentException
 import com.tianyisoft.database.exceptions.MultipleRecordsFoundException
 import com.tianyisoft.database.exceptions.RecordsNotFoundException
@@ -13,6 +14,8 @@ import com.tianyisoft.database.util.*
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.support.GeneratedKeyHolder
+import java.util.*
+import kotlin.collections.LinkedHashMap
 import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberFunctions
@@ -38,6 +41,13 @@ open class Builder: Cloneable {
     val bindings: LinkedHashMap<String, MutableList<Any?>> = linkedMapOf() // order is important
     val withes: MutableMap<String, Map<String, Any?>> = mutableMapOf()
 
+    var jdbcTemplate:JdbcTemplate? = null
+    var grammar: Grammar = MysqlGrammar()
+
+    private var softDelete = false
+    private var deletedColumn = "deleted_at"
+    private var deletedDataType = DeletedDataType.DATETIME
+
     private val operators = listOf(
         "=", "<", ">", "<=", ">=", "<>", "!=", "<=>",
         "like", "like binary", "not like", "ilike",
@@ -47,13 +57,26 @@ open class Builder: Cloneable {
         "not similar to", "not ilike", "~~*", "!~~*",
     )
 
-    var jdbcTemplate:JdbcTemplate? = null
-    var grammar: Grammar = MysqlGrammar()
-
     init {
         listOf("select", "from", "join", "where", "groupBy", "having", "order", "union", "unionOrder").forEach {
             bindings[it] = mutableListOf()
         }
+    }
+
+    @JvmOverloads
+    open fun enableSoftDelete(column: String = "deleted_at", dataType: DeletedDataType = DeletedDataType.DATETIME): Builder {
+        softDelete = true
+        deletedColumn = column
+        deletedDataType = dataType
+        when (dataType) {
+            DeletedDataType.DATETIME -> {
+                whereNull(column)
+            }
+            DeletedDataType.INTEGER -> {
+                where(column, "=", 0)
+            }
+        }
+        return this
     }
 
     open fun select(vararg fields: Any): Builder {
@@ -1604,6 +1627,13 @@ open class Builder: Cloneable {
         if (id != null) {
             where("$from.id", "=", id)
         }
+        if (softDelete) {
+            if (deletedDataType == DeletedDataType.INTEGER) {
+                return update(mapOf(deletedColumn to 1))
+            }
+            return update(mapOf(deletedColumn to Date()))
+        }
+
         val sql = grammar.compileDelete(this)
         val parameters = cleanBindings(grammar.prepareBindingsForDelete(bindings))
         printDebugInfo(sql, parameters)

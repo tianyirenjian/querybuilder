@@ -1,5 +1,8 @@
 package com.tianyisoft.database.snippets
 
+/**
+ * @deprecated 程序支持了全局的软删除，不再需要这个
+ */
 val deletedSnippet = Snippet { builder, params ->
     if (params.isEmpty()) {
         builder.whereNotNull("deleted_at")
