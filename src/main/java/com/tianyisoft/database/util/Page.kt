@@ -21,5 +21,11 @@ class Page<T>: java.io.Serializable {
             }
             return p
         }
+
+        @JvmStatic
+        @JvmOverloads
+        fun <T> empty(page: Int = 1, pageSize: Int = 15): Page<T> {
+            return new(page, pageSize, 0, ArrayList())
+        }
     }
 }

@@ -1088,12 +1088,12 @@ open class Builder: Cloneable {
     @JvmOverloads
     open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page<T> {
         val total = getCountForPagination()
-        val results = if (total > 0) {
-            forPage(page, pageSize).get(klass)
+        return if (total > 0) {
+            val result = forPage(page, pageSize).get(klass)
+            Page.new(page, pageSize, total, result)
         } else {
-            listOf()
+            Page.empty()
         }
-        return Page.new(page, pageSize, total, results)
     }
 
     protected open fun getCountForPagination(): Long {
