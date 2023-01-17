@@ -1,18 +1,26 @@
 package com.tianyisoft.database
 
+import com.tianyisoft.database.annotations.DbTemplate
+import com.tianyisoft.database.util.BeanHelper
 import org.springframework.jdbc.core.JdbcTemplate
 import java.util.Date
 
 abstract class AbstractRepository {
     protected abstract val table: String
-    protected abstract val dbTemplate: JdbcTemplate
     protected open val timestamps = false
     protected open val createdColumn = "created_at"
     protected open val updatedColumn = "updated_at"
 
     open fun builder(): Builder {
+        val dbTemplate = this.javaClass.getAnnotation(DbTemplate::class.java)
+        val jdbcTemplate = if (dbTemplate == null || dbTemplate.value == "") {
+            BeanHelper.getBean(JdbcTemplate::class.java)
+        } else {
+            BeanHelper.getBean(dbTemplate.value, JdbcTemplate::class.java)
+        }
+
         val builder = Builder()
-        builder.jdbcTemplate = dbTemplate
+        builder.jdbcTemplate = jdbcTemplate
         return builder
     }
 
