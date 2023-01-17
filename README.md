@@ -4,6 +4,10 @@
 
 也可以使用 kotlin 来写 Repository 层调用，然后供其他的 java 代码直接调用方法。
 
+QueryBuilder 是我个人使用的查询库，已用在多个生产项目中，目前运行良好， 平时遇到问题我也会修改和升级程序。
+
+程序在 jdk 1.8 上编译， 在 jdk 1.8 和 jdk 17 均测试正常运行，其他版本我没试过。
+
 ### 安装
 
 maven:
@@ -12,14 +16,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>1.1.2</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:1.1.2'
+implementation 'com.tianyisoft.database:querybuilder:2.0.0'
 ```
 
 ### 使用说明
@@ -40,7 +44,7 @@ val builder2 = Builder()
 builder2.jdbcTemplate = jdbcTemplate
 ```
 
-这里是公共方法，也可以通过后面的 `AbstractRepository` 来避免手动创建实例。
+这里是公共方法，如果使用 spring boot 也可以通过后面的 `AbstractRepository` 来避免手动创建实例。
 
 ### 获取结果
 
@@ -647,9 +651,6 @@ val page = builder.table("users")
 
 `paginate` 返回的数据是 `Page` 类型，里面包含的是 `List<Map<String, Any?>>` 类型。也可以传递 `KClass<T>` 或 `Class<T>` 来返回对象类型
 
-1.0.10 版本后添加了支持泛型的 `paginateT` 方法, 返回 `PageT` 类型
-
-
 ### 条件语句
 
 
@@ -765,31 +766,35 @@ bindings: [3]
 
 ### AbstractRepository
 
-从 1.0.4 版本添加了一个 `AbstractRepository` 类，在使用 spring 框架时可以继承该类，并添加 `@Component` 就可以注入使用了
+如果你使用的是 spring boot, QueryBuilder 提供了一个 `AbstractRepository` 类
 
-继承 `AbstractRepository` 需要注入一个 `JdbcTemplate`, 并提供表名。
+**首先在 spring boot 的 application 类上添加注解 `@EnableRepository`**， 然后就可以继承该类，并添加 `@Component` 就可以注入使用了
+
+继承 `AbstractRepository` 需要提供表名。
 
 ```kotlin
 import com.tianyisoft.database.AbstractRepository
-import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import com.tianyisoft.database.util.Page
 
 @Component
-open class UserRepository(private val jdbcTemplate: JdbcTemplate): AbstractRepository() {
+open class UserRepository: AbstractRepository() {
     override val table: String = "users"
-    override val dbTemplate: JdbcTemplate = jdbcTemplate
 
     // 获取未删除用户的分页数据
-    fun notDeleted(): Page {
-        return query().whereNotNull("deleted_at").orderBy("id").paginate()
+    fun notDeleted(): Page<Map<String, Any?>> {
+        return query().whereNull("deleted_at").orderBy("id").paginate()
     }
 }
 ```
 
-如果习惯使用 java 写程序，可以使用 kotlin 来实现 Repository, 然后通过 java 代码来调用，这样就只有 Repository 一层是 kotlin 代码。因为使用 kotlin 来调用 querybuilder 实在是太舒服了.
+#### 多数据源
 
-`AbstractRepository` 也实现了简单的增删改查方法, 也可以通过 `query()` 方法使用更多的 querybuilder 提供的方法。
+QueryBuilder 本身就可以通过设置不同的 JdbcTemplate 来实现多数据源。使用 `AbstractRepository` 时，可以通过 `@DbTemplate` 来指定使用哪个数据源, 默认使用 spring boot 默认的 JdbcTemplate bean.
+
+#### 基本方法
+
+`AbstractRepository` 也实现了简单的增删改查方法, 同时也可以通过 `query()` 方法使用更多的 querybuilder 提供的方法。
 
 ```kotlin
 val id = userRepository.insert(hashMapOf(/*...*/))
@@ -817,6 +822,8 @@ override fun beforeInsert(params: MutableMap<String, Any?>): Map<String, Any?> {
 上面提到了设置 `created_at` 和 `updated_at` 的值, 还有更直接的办法来完成这个操作，继承 `AbstractRepository` 并重写父类的 `timestamps` 值为 `true` 就可以自动插入这两列的值，还可能通过重写 `createdColumn` 和 `updatedColumn` 来修改字段名。
 
 同样的，这个功能只对 `AbstractRepository` 自有的方法有作用，通过 `query()` 调用的操作不起作用
+
+如果习惯使用 java 写程序，可以使用 kotlin 来实现 Repository, 然后通过 java 代码来调用，这样就只有 Repository 一层是 kotlin 代码。因为使用 kotlin 来调用 querybuilder 实在是太舒服了.
 
 ### Snippet 代码片段
 
