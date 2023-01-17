@@ -1077,40 +1077,23 @@ open class Builder: Cloneable {
         }
     }
 
-    @JvmOverloads
-    open fun paginate(page: Int = 1, pageSize: Int = 15): Page {
-        val total = getCountForPagination()
-        val results = if (total > 0) {
-            forPage(page, pageSize).get()
-        } else {
-            listOf()
-        }
-        return Page.new(page, pageSize, total, results)
-    }
-
-    open fun <T: Any> paginate(clazz: KClass<T>, page: Int = 1, pageSize: Int = 15) = paginate(clazz.java, page, pageSize)
 
     @JvmOverloads
-    open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page{
-        val total = getCountForPagination()
-        val results = if (total > 0) {
-                forPage(page, pageSize).get(klass)
-        } else {
-            listOf()
-        }
-        return Page.new(page, pageSize, total, results)
-    }
+    @Suppress("unchecked_cast")
+    open fun paginate(page: Int = 1, pageSize: Int = 15) = paginate(Map::class.java, page, pageSize) as Page<Map<String, Any?>>
 
-    open fun <T : Any> paginateT(clazz: KClass<T>, page: Int, pageSize: Int): PageT<T> = paginateT(clazz.java, page, pageSize)
+    @JvmOverloads
+    open fun <T : Any> paginate(clazz: KClass<T>, page: Int = 1, pageSize: Int = 15): Page<T> = paginate(clazz.java, page, pageSize)
 
-    open fun <T: Any> paginateT(klass: Class<T>, page: Int = 1, pageSize: Int = 15): PageT<T> {
+    @JvmOverloads
+    open fun <T: Any> paginate(klass: Class<T>, page: Int = 1, pageSize: Int = 15): Page<T> {
         val total = getCountForPagination()
         val results = if (total > 0) {
             forPage(page, pageSize).get(klass)
         } else {
             listOf()
         }
-        return PageT.new(page, pageSize, total, results)
+        return Page.new(page, pageSize, total, results)
     }
 
     protected open fun getCountForPagination(): Long {
@@ -1342,7 +1325,6 @@ open class Builder: Cloneable {
         return chunk(clazz.java, count, callback)
     }
 
-    @Suppress("unchecked_cast")
     open fun <T: Any> chunk(klass: Class<T>, count: Int, callback: (List<T>, Int) -> Boolean): Boolean {
         enforceOrderBy()
         var page = 1
@@ -1569,7 +1551,6 @@ open class Builder: Cloneable {
      * 更新记录，可以结合 where 条件更新多条数据, 没有任何 where 条件则会更新整个表!
      * 特意不支持 [com.tianyisoft.database.Table] 的实例, 因为可能更新多条，和 Table 代表一条数据的意义冲突
      * */
-    @Suppress("unchecked_cast")
     open fun update(values: Map<String, Any?>): Int {
         val sql = grammar.compileUpdate(this, values)
         val parameters = cleanBindings(grammar.prepareBindingsForUpdate(bindings, values))
