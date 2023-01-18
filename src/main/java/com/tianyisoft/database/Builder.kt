@@ -275,7 +275,14 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
+    open fun whereEquals(column: Any, value: Any?, boolean: String = "and"): Builder {
+        return where(column, "=", value, boolean)
+    }
+
+    @JvmOverloads
     open fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
+
+    open fun orWhereEquals(column: Any, value: Any?) = whereEquals(column, value, "or")
 
     @JvmOverloads
     open fun whereNot(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
