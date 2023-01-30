@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.jdbc.core.JdbcTemplate
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 open class BuilderTest {
@@ -55,5 +56,20 @@ open class BuilderTest {
         }))
 
         assertEquals(builder.toSql(), builder2.toSql())
+    }
+
+    @Test
+    fun testWhereDateFunction() {
+        val sql = "select * from `users` where date(`created_at`) = ? or time(`created_at`) = ? or day(`created_at`) = ? or month(`created_at`) = ? or year(`created_at`) = ? or year(`created_at`) >= ?"
+        builder
+            .table("users")
+            .whereDate("created_at", "2020-01-01")
+            .orWhereTime("created_at", "12:00:00")
+            .orWhereDay("created_at", 2)
+            .orWhereMonth("created_at", 3)
+            .orWhereYear("created_at", 2020)
+            .orWhereYear("created_at", ">=", 2022)
+
+        assertEquals(builder.toSql(), sql)
     }
 }

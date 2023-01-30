@@ -260,7 +260,7 @@ open class Builder: Cloneable {
 
         if (value == null) {
             // if value is null and operator is not = or != or <>, it is short for where(column, operator, value)
-            if (operator !in listOf("=", "!=", "<>")) {
+            if (isNotEqualsOperator(operator)) {
                 return where(column, "=", operator, boolean)
             }
 
@@ -277,6 +277,10 @@ open class Builder: Cloneable {
             addBinding(flatten(value).first(), "where")
         }
         return this
+    }
+
+    protected open fun isNotEqualsOperator(operator: Any?): Boolean {
+        return operator !in listOf("=", "!=", "<>")
     }
 
     @JvmOverloads
@@ -425,20 +429,31 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun whereDate(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereDate(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return whereDate(column, "=", operator, boolean)
+        }
         return addDateBasedWhere("Date", column, operator, value, boolean)
     }
-    open fun orWhereDate(column: String, operator: String, value: Any?) = whereDate(column, operator, value, "or")
+    @JvmOverloads
+    open fun orWhereDate(column: String, operator: Any?, value: Any? = null) = whereDate(column, operator, value, "or")
 
     @JvmOverloads
-    open fun whereTime(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereTime(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return whereTime(column, "=", operator, boolean)
+        }
         return addDateBasedWhere("Time", column, operator, value, boolean)
     }
 
-    open fun orWhereTime(column: String, operator: String, value: Any?) = whereTime(column, operator, value, "or")
+    @JvmOverloads
+    open fun orWhereTime(column: String, operator: Any?, value: Any? = null) = whereTime(column, operator, value, "or")
 
     @JvmOverloads
-    open fun whereDay(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereDay(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return whereDay(column, "=", operator, boolean)
+        }
         var value2 = value
         if (value !is Expression) {
             value2 = value?.toString()?.padStart(2, '0')
@@ -446,10 +461,14 @@ open class Builder: Cloneable {
         return addDateBasedWhere("Day", column, operator, value2, boolean)
     }
 
-    open fun orWhereDay(column: String, operator: String, value: Any?) = whereDay(column, operator, value, "or")
+    @JvmOverloads
+    open fun orWhereDay(column: String, operator: Any?, value: Any? = null) = whereDay(column, operator, value, "or")
 
     @JvmOverloads
-    open fun whereMonth(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereMonth(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return whereMonth(column, "=", operator, boolean)
+        }
         var value2 = value
         if (value !is Expression) {
             value2 = value?.toString()?.padStart(2, '0')
@@ -457,16 +476,21 @@ open class Builder: Cloneable {
         return addDateBasedWhere("Month", column, operator, value2, boolean)
     }
 
-    open fun orWhereMonth(column: String, operator: String, value: Any?) = whereMonth(column, operator, value, "or")
+    @JvmOverloads
+    open fun orWhereMonth(column: String, operator: Any?, value: Any? = null) = whereMonth(column, operator, value, "or")
 
     @JvmOverloads
-    open fun whereYear(column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    open fun whereYear(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return whereYear(column, "=", operator, boolean)
+        }
         return addDateBasedWhere("Year", column, operator, value, boolean)
     }
 
-    open fun orWhereYear(column: String, operator: String, value: Any?) = whereYear(column, operator, value, "or")
+    @JvmOverloads
+    open fun orWhereYear(column: String, operator: Any?, value: Any? = null) = whereYear(column, operator, value, "or")
 
-    protected open fun addDateBasedWhere(type: String, column: String, operator: String, value: Any?, boolean: String = "and"): Builder {
+    protected open fun addDateBasedWhere(type: String, column: String, operator: Any?, value: Any?, boolean: String = "and"): Builder {
         wheres.add(hashMapOf(
             "type" to type,
             "column" to column,
