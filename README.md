@@ -390,6 +390,18 @@ val users = builder.table("users")
     .get()
 ```
 
+当操作符是 "=" 时，绝大部分情况可以省略操作符, 当**值**是 "=", "!=" 和 "<>" 时，操作符不可以省略, 因为第三个参数默认值是 null，程序会认为是使用以上操作符与 null 比较, 此时可以使用 whereEquals.
+
+省略 "=" 操作符时， where 方法的第三个参数不要传，或者传 null
+
+```kotlin
+val users = builder.table("users")
+    .where("age", 18)
+    .where("score", 60)
+    .get()
+```
+
+
 如果有多个条件可以使用一个嵌套 List 直接传递给 `where` 方法
 
 ```kotlin
@@ -424,6 +436,19 @@ val users = builder.table("users")
 ```
 
 #### 其他 where 语句
+
+##### `whereEquals` / `orWhereEquals`
+
+验证相等，不用每次都传 = 号
+
+```kotlin
+// select * from `users` where `name` = ?
+val users = builder.table("users")
+    .whereEquals("name", "Tom")
+    .get()
+```
+
+事实上，`whereEquals` 和 `orWhereEquals` 方法只是 `where` 和 `orWhere` 方法的特殊情况，只是为了更好的语义化
 
 ##### `whereBetween` / `orWhereBetween` / `whereNotBetween` / `orWhereNotBetween`
 

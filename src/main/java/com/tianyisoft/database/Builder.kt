@@ -237,7 +237,7 @@ open class Builder: Cloneable {
 
     @JvmOverloads
     @Suppress("UNCHECKED_CAST")
-    open fun where(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
+    open fun where(column: Any, operator: Any? = null, value: Any? = null, boolean: String = "and"): Builder {
         if (column is List<*>) {
             return addListOfWheres(column as List<List<Any?>>, boolean)
         }
@@ -255,10 +255,15 @@ open class Builder: Cloneable {
         }
 
         if (value is Function1<*, *>) {
-            return whereSub(column as String, operator, value as Function1<Builder, Unit>, boolean)
+            return whereSub(column as String, operator as String?, value as Function1<Builder, Unit>, boolean)
         }
 
         if (value == null) {
+            // if value is null and operator is not = or != or <>, it is short for where(column, operator, value)
+            if (operator !in listOf("=", "!=", "<>")) {
+                return where(column, "=", operator, boolean)
+            }
+
             return whereNull(column, boolean, operator != "=")
         }
         wheres.add(hashMapOf(
@@ -582,9 +587,10 @@ open class Builder: Cloneable {
             val whereFunction = it::class.memberFunctions.first { f -> f.name == method && f.parameters.size == 5 }
             column.forEach{ l ->
                 when(l.size) {
-                    2 -> whereFunction.call(it, l.component1(), "=", l.component2(), "and")
-                    3 -> whereFunction.call(it, l.component1(), l.component2(), l.component3(), "and")
-                    4 -> whereFunction.call(it, l.component1(), l.component2(), l.component3(), l.component4())
+                    1 -> whereFunction.call(it, l[0], null, null, "and")
+                    2 -> whereFunction.call(it, l[0], "=", l[1], "and")
+                    3 -> whereFunction.call(it, l[0], l[1], l[2], "and")
+                    4 -> whereFunction.call(it, l[0], l[1], l[2], l[3])
                     else -> throw InvalidArgumentException("Invalid where parameters count ${l.size}.")
                 }
             }
