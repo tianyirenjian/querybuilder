@@ -1272,8 +1272,24 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun firstWhere(column: String, operator: String, value: Any?, boolean: String = "and"): Map<String, Any?>? {
+    open fun firstWhere(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Map<String, Any?>? {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return where(column, "=", operator, boolean).first()
+        }
         return where(column, operator, value, boolean).first()
+    }
+
+    @JvmOverloads
+    open fun <T: Any> firstWhere(klass: Class<T>, column: String, operator: Any?, value: Any? = null, boolean: String = "and"): T? {
+        if (value == null && isNotEqualsOperator(operator)) {
+            return where(column, "=", operator, boolean).first(klass)
+        }
+        return where(column, operator, value, boolean).first(klass)
+    }
+
+    @JvmOverloads
+    open fun <T: Any> firstWhere(clazz: KClass<T>, column: String, operator: Any?, value: Any? = null, boolean: String = "and"): T? {
+        return firstWhere(clazz.java, column, operator, value, boolean)
     }
 
     open fun first(): Map<String, Any?>? {
