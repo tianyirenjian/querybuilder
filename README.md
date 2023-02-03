@@ -644,7 +644,7 @@ val users = builder.table("users")
     .get()
 ```
 
-与 `having` 类似的还有 `havingBetween`, 使用方法类似 `whereBetween`
+与 `having` 类似的还有 `havingBetween`, `havingNull`, 使用方法类似 `whereBetween` 和 `whereNull`
 
 #### Limit 和 Offset
 
