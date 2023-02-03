@@ -230,12 +230,17 @@ open class Grammar {
         return when(having["type"]) {
             "Raw" ->  "${having["boolean"]} ${having["sql"]}"
             "Between" -> compileHavingBetween(having)
+            "Null", "NotNull" -> compileHavingNull(having)
             else -> compileBasicHaving(having)
         }
     }
 
     protected open fun compileBasicHaving(having: Map<String, Any?>): String {
         return "${having["boolean"]} ${wrap(having["column"])} ${having["operator"]} ${parameter(having["value"])}"
+    }
+
+    protected open fun compileHavingNull(having: Map<String, Any?>): String {
+        return "${having["boolean"]} ${wrap(having["column"])} ${if (having["type"] == "Null") "is" else "is not"} null"
     }
 
     protected open fun compileHavingBetween(having: Map<String, Any?>): String {

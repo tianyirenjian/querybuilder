@@ -263,8 +263,7 @@ open class Builder: Cloneable {
             if (isNotEqualsOperator(operator)) {
                 return where(column, "=", operator, boolean)
             }
-
-            return whereNull(column, boolean, operator != "=")
+            return whereNull(column as String, boolean, operator != "=")
         }
         wheres.add(hashMapOf(
             "type" to "Basic",
@@ -326,33 +325,19 @@ open class Builder: Cloneable {
     open fun orWhereColumn(first: String, operator: String, second: String) = whereColumn(first, operator, second, "or")
 
     @JvmOverloads
-    open fun whereNull(columns: Any, boolean: String = "and", not: Boolean = false): Builder {
-        if (columns !is String && columns !is List<*> && columns !is Array<*> && columns !is Set<*>) {
-            throw InvalidArgumentException("columns must be String or List<String> or Array<String> or Set<String")
-        }
-        wrapList(columns).forEach {
-            wheres.add(hashMapOf(
-                "type" to if (not) "NotNull" else "Null",
-                "column" to it,
-                "boolean" to boolean
-            ))
-        }
+    open fun whereNull(column: String, boolean: String = "and", not: Boolean = false): Builder {
+        wheres.add(hashMapOf(
+            "type" to if (not) "NotNull" else "Null",
+            "column" to column,
+            "boolean" to boolean
+        ))
         return this
     }
 
     @JvmOverloads
-    open fun whereNotNull(column: Any, boolean: String = "and") = whereNull(column, boolean, true)
-    open fun orWhereNull(column: Any) = whereNull(column, "or")
-    open fun orWhereNotNull(column: Any) = whereNotNull(column, "or")
-
-    private fun wrapList(values: Any): List<String> {
-        return when(values) {
-            is String -> listOf(values)
-            is Collection<*> -> values.map { if (it is String) it else it.toString() }
-            is Array<*> -> values.map { if (it is String) it else it.toString()  }
-            else -> listOf(values.toString())
-        }
-    }
+    open fun whereNotNull(column: String, boolean: String = "and") = whereNull(column, boolean, true)
+    open fun orWhereNull(column: String) = whereNull(column, "or")
+    open fun orWhereNotNull(column: String) = whereNotNull(column, "or")
 
     @JvmOverloads
     open fun whereRaw(sql: String, bindings: List<Any?>, boolean: String = "and"): Builder {
@@ -681,6 +666,22 @@ open class Builder: Cloneable {
     open fun orHaving(column: String, operator: String, value: Any?): Builder {
         return having(column, operator, value, "or")
     }
+
+    @JvmOverloads
+    open fun havingNull(column: Any, boolean: String = "and", not: Boolean = false): Builder {
+        havings.add(hashMapOf(
+            "type" to if (not) "NotNull" else "Null",
+            "column" to column,
+            "boolean" to boolean
+        ))
+        return this
+    }
+
+    @JvmOverloads
+    open fun orHavingNull(column: Any, not: Boolean = false): Builder = havingNull(column, "or", not)
+    @JvmOverloads
+    open fun havingNotNull(column: Any, boolean: String = "and"): Builder = havingNull(column, boolean, true)
+    open fun orHavingNotNull(column: Any): Builder = havingNotNull(column, "or")
 
     @JvmOverloads
     open fun havingBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {

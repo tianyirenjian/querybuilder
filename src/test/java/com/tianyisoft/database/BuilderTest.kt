@@ -79,4 +79,11 @@ open class BuilderTest {
         builder2.table("users").whereNull("name")
         assertEquals(builder.toSql(), builder2.toSql())
     }
+
+    @Test
+    fun testHavingNull() {
+        val sql = "select count(*) as total, name from `users` group by `name` having `name` is null"
+        builder.table("users").selectRaw("count(*) as total, name").groupBy("name").havingNull("name")
+        assertEquals(builder.toSql(), sql)
+    }
 }
