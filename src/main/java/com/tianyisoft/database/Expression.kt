@@ -1,3 +1,3 @@
 package com.tianyisoft.database
 
-data class Expression(val value: String?)
+data class Expression(val value: String)

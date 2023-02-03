@@ -188,6 +188,9 @@ open class Grammar {
     protected open fun whereYear(query: Builder, where: Map<String, Any?>) = dateBasedWhere("year", query, where)
 
     protected open fun dateBasedWhere(format: String, query: Builder, where: Map<String, Any?>): String {
+        if (where.containsKey("null_operator") && where["value"] == null) {
+            return "${wrap(where["column"])} ${if (where["null_operator"] == "Null") "is" else "is not"} null"
+        }
         return "$format(${wrap(where["column"])}) ${where["operator"]} ${parameter(where["value"])}"
     }
 
@@ -267,7 +270,7 @@ open class Grammar {
     }
 
     protected open fun parameter(value: Any?): String {
-        return if (value is Expression) value.value as String else "?"
+        return if (value is Expression) value.value else "?"
     }
 
     protected open fun  parameterize(values: List<Any?>): String{
@@ -283,7 +286,7 @@ open class Grammar {
             return null
         }
         if (value is Expression) {
-            return value.value as String
+            return value.value
         }
         if (value !is String) {
             return wrap(value.toString())
@@ -311,7 +314,7 @@ open class Grammar {
 
     open fun wrapTable(table: Any): String {
         if (table is Expression) {
-            return table.value as String
+            return table.value
         }
         return wrap(table)!!
     }

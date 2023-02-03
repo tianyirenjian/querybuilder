@@ -72,4 +72,11 @@ open class BuilderTest {
 
         assertEquals(builder.toSql(), sql)
     }
+
+    @Test
+    fun testWhereNull() {
+        builder.table("users").where("name", null)
+        builder2.table("users").whereNull("name")
+        assertEquals(builder.toSql(), builder2.toSql())
+    }
 }

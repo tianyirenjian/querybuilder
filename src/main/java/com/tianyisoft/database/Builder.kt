@@ -491,13 +491,17 @@ open class Builder: Cloneable {
     open fun orWhereYear(column: String, operator: Any?, value: Any? = null) = whereYear(column, operator, value, "or")
 
     protected open fun addDateBasedWhere(type: String, column: String, operator: Any?, value: Any?, boolean: String = "and"): Builder {
-        wheres.add(hashMapOf(
+        val where = hashMapOf(
             "type" to type,
             "column" to column,
             "operator" to operator,
             "value" to value,
             "boolean" to boolean
-        ))
+        )
+        if (value == null) {
+            where["null_operator"] = if (operator == "=") "Null" else "NotNull"
+        }
+        wheres.add(where)
         if (value !is Expression) {
             addBinding(value)
         }
@@ -917,7 +921,7 @@ open class Builder: Cloneable {
 
     protected open fun getTableOrAlias(): String {
         val table = if (from is Expression) {
-            (from as Expression).value as String
+            (from as Expression).value
         } else {
             from as String
         }
@@ -1492,7 +1496,7 @@ open class Builder: Cloneable {
     protected open fun stripTableForPluck(column: Any?): String? {
         if (column == null) return null
         val columnName = if (column is Expression) {
-            column.value as String
+            column.value
         } else {
             column as String
         }

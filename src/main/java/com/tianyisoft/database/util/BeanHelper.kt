@@ -20,15 +20,15 @@ class BeanHelper : ApplicationContextAware, InitializingBean {
     companion object {
         private var beanHelper: BeanHelper? = null
         fun <T> getBean(clazz: Class<T>): T {
-            return beanHelper!!.applicationContext!!.getBean(clazz)
+            return beanHelper!!.applicationContext.getBean(clazz)
         }
 
         fun getBean(name: String): Any {
-            return beanHelper!!.applicationContext!!.getBean(name)
+            return beanHelper!!.applicationContext.getBean(name)
         }
 
         fun <T> getBean(name: String, clazz: Class<T>): T {
-            return beanHelper!!.applicationContext!!.getBean(name, clazz)
+            return beanHelper!!.applicationContext.getBean(name, clazz)
         }
     }
 }
