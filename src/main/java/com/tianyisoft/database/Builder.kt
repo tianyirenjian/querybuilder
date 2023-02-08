@@ -1669,7 +1669,7 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun decrement(column: String, amount: Number = -1, extra: Map<String, Any?> = mutableMapOf()): Int {
+    open fun decrement(column: String, amount: Number = 1, extra: Map<String, Any?> = mutableMapOf()): Int {
         extra as MutableMap
         val wrapped = grammar.wrap(column)
         extra[column] = Expression("$wrapped - $amount")

@@ -16,14 +16,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:2.0.0'
+implementation 'com.tianyisoft.database:querybuilder:2.0.1'
 ```
 
 ### 使用说明
@@ -54,8 +54,6 @@ builder2.jdbcTemplate = jdbcTemplate
 
 ```kotlin
 
-import org.springframework.jdbc.core.BeanPropertyRowMapper
-
 val users = builder.table("users").get() // List<Map<String, Any?>>
 
 val users = builder.table("users").get(User::class.java) // List<User>
@@ -70,8 +68,6 @@ val users = builder.table("users").get(User::class.java) // List<User>
 可以使用 `first` 方法获取第一条结果
 
 ```kotlin
-import org.springframework.jdbc.core.BeanPropertyRowMapper
-
 val user = builder.table("users").first() // Map<String, Any?>
 
 val user = builder.table("users").first(User::class.java) // User
