@@ -1,6 +1,6 @@
 # QueryBuilder
 
-数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是某些复杂参数的函数可能无法简单调用， 需要使用 kotlin 内部的类型。
+数据库增删改查构造器，使用 kotlin 编写。kotlin 调用起来非常舒服，java 也可以调用，但是某些复杂参数的函数可能无法简单调用， 需要使用 kotlin 内部的类型，下面有 java 示例。
 
 也可以使用 kotlin 来写 Repository 层调用，然后供其他的 java 代码直接调用方法。
 
@@ -566,6 +566,28 @@ val users = builder.table("users")
         query.from("posts").whereColumn("id", "=", "users.id").selectRaw("count(*)")
     })
     .get()
+```
+
+#### java 示例
+
+使用 java 写复杂查询时， 可以通过调用 kotlin 的 `Function1` 类来实现
+
+```java
+// select * from `users` where (select count(*) from `posts` where `id` = `users`.`id`) < ?
+
+import kotlin.jvm.functions.Function1;
+
+builder.table("users")
+    .where(new Function1<Builder, Void>() {
+        @Override
+        public Void invoke(Builder query) {
+            query.from("posts")
+                    .whereColumn("id", "=", "users.id")
+                    .selectRaw("count(*)");
+            return null;
+        }
+    }, "<", 3)
+    .get();
 ```
 
 
