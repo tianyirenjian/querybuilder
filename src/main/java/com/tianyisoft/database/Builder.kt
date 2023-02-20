@@ -278,14 +278,10 @@ open class Builder: Cloneable {
         return this
     }
 
-    protected open fun isNotEqualsOperator(operator: Any?): Boolean {
-        return operator !in listOf("=", "!=", "<>")
-    }
+    protected open fun isNotEqualsOperator(operator: Any?) = operator !in listOf("=", "!=", "<>")
 
     @JvmOverloads
-    open fun whereEquals(column: Any, value: Any?, boolean: String = "and"): Builder {
-        return where(column, "=", value, boolean)
-    }
+    open fun whereEquals(column: Any, value: Any?, boolean: String = "and") = where(column, "=", value, boolean)
 
     @JvmOverloads
     open fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
@@ -350,7 +346,7 @@ open class Builder: Cloneable {
         return this
     }
 
-    open fun whereRaw(sql: String, vararg bindings: Any?): Builder = whereRaw(sql, bindings.toList())
+    open fun whereRaw(sql: String, vararg bindings: Any?) = whereRaw(sql, bindings.toList())
 
     open fun orWhereRaw(sql: String, bindings: List<Any?>) = whereRaw(sql, bindings, "or")
 
