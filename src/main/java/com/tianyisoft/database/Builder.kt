@@ -899,20 +899,23 @@ open class Builder: Cloneable {
 
     protected open fun hasManyBuilder(relation: HasMany): Builder {
         val alias = getTableOrAlias()
-        return relation.table(relation.table)
-            .whereColumn("${relation.table}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
+        val relationAlias = relation.table + "__alias"
+        return relation.table(relation.table, relationAlias)
+            .whereColumn("${relationAlias}.${relation.foreignKey}", "=", "$alias.${relation.localKey}")
     }
 
     protected open fun belongsToBuilder(relation: BelongsTo): Builder {
         val alias = getTableOrAlias()
-        return relation.table(relation.table)
-            .whereColumn("${relation.table}.${relation.ownerKey}", "=", "$alias.${relation.foreignKey}")
+        val relationAlias = relation.table + "__alias"
+        return relation.table(relation.table, relationAlias)
+            .whereColumn("${relationAlias}.${relation.ownerKey}", "=", "$alias.${relation.foreignKey}")
     }
 
     protected open fun belongsToManyBuilder(relation: BelongsToMany): Builder {
         val alias = getTableOrAlias()
-        return relation.table(relation.table)
-            .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relation.table}.${relation.relatedKey}")
+        val relationAlias = relation.table + "__alias"
+        return relation.table(relation.table, relationAlias)
+            .join(relation.pivotTable, "${relation.pivotTable}.${relation.relatedPivotKey}", "=", "${relationAlias}.${relation.relatedKey}")
             .whereColumn("${relation.pivotTable}.${relation.foreignPivotKey}", "=", "$alias.${relation.localKey}")
     }
 
@@ -984,7 +987,7 @@ open class Builder: Cloneable {
     @Suppress("UNCHECKED_CAST")
     open fun get(): List<Map<String, Any?>> {
         var result = runSelect<List<*>>() as List<Map<String, Any?>>
-        if (withes.isNotEmpty()) {
+        if (withes.isNotEmpty() && result.isNotEmpty()) {
             withes.forEach { (name, map) ->
                 val relation = map["relation"] as Relation
                 result = resolveRelation(result, name, relation)
@@ -1020,6 +1023,10 @@ open class Builder: Cloneable {
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.localKey] }.distinct()
         setUpEmptyQuery(relation)
+        if (relation.recursive) {
+            val subRelation = relation.copy()
+            relation.with(name, subRelation)
+        }
         relation.table(relation.table).whereIn(relation.foreignKey, keys)
         val data = relation.get()
         result.forEach {
@@ -1041,6 +1048,10 @@ open class Builder: Cloneable {
     ): List<Map<String, Any?>> {
         val keys = result.map { it[relation.foreignKey] }.distinct()
         setUpEmptyQuery(relation)
+        if (relation.recursive) {
+            val subRelation = relation.copy()
+            relation.with(name, subRelation)
+        }
         relation.table(relation.table).whereIn(relation.ownerKey, keys)
         val data = relation.get()
         result.forEach {

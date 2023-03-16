@@ -5,8 +5,10 @@ open class HasOne(
     override val foreignKey: String,
     override val localKey: String = "id"
 ) : HasMany(table, foreignKey, localKey) {
+    override var recursive = false
     override fun clone(): Any {
         val hasOne = HasOne(table, foreignKey, localKey)
+        hasOne.recursive = recursive
         copyAttributes(hasOne)
         return hasOne
     }

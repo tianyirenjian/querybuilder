@@ -7,8 +7,16 @@ open class HasMany(
     open val foreignKey: String,
     open val localKey: String = "id"
 ) : Builder(), Relation {
+    open var recursive = false
+
+    fun withRecursive(recursive: Boolean = true): HasMany {
+        this.recursive = recursive
+        return this
+    }
+
     override fun clone(): Any {
         val hasMany = HasMany(table, foreignKey, localKey)
+        hasMany.recursive = recursive
         copyAttributes(hasMany)
         return hasMany
     }
