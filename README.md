@@ -224,7 +224,7 @@ val users = builder.table("users")
 ```kotlin
 // select * from (select * from users where age < ?) as u
 val youngUser = builder
-    .fromRaw("(users where age < ?) as u", listOf(18))
+    .fromRaw("(select * from users where age < ?) as u", listOf(18))
     .get()
 ```
 
