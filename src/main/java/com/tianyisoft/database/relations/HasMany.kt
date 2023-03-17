@@ -9,6 +9,7 @@ open class HasMany(
 ) : Builder(), Relation {
     open var recursive = false
 
+    @JvmOverloads
     fun withRecursive(recursive: Boolean = true): HasMany {
         this.recursive = recursive
         return this

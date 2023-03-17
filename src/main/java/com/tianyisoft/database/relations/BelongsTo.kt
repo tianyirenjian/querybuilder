@@ -9,6 +9,7 @@ open class BelongsTo(
 ): Builder(), Relation {
     open var recursive = false
 
+    @JvmOverloads
     fun withRecursive(recursive: Boolean = true): BelongsTo {
         this.recursive = recursive
         return this
