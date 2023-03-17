@@ -929,6 +929,9 @@ builder.table("users").enableSoftDelete("deleted", DeletedDataType.INTEGER).get(
 
 目前直接的关联有 `HasOne`(一对一), `BelongsTo`(反向一对一), `HasMany`(一对多) 和 `BelongsToMany`(多对多)。
 
+`HasOne`(一对一), `BelongsTo`(反向一对一), `HasMany`(一对多) 支持递归查询，可能通过设置 relation 的 `recursive` 属性来设置递归的深度，
+比如 `HasOne("id_card", "user_id", "id").withRecursive()` 表示要使用递归，这在无限级别树等场景下会很有用。
+
 #### HasOne, HasMany 和 BelongsTo
 
 ##### HasOne 和 HasMany
