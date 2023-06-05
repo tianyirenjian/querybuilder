@@ -16,14 +16,14 @@ maven:
 <dependency>
   <groupId>com.tianyisoft.database</groupId>
   <artifactId>querybuilder</artifactId>
-  <version>2.0.2</version>
+  <version>2.0.3</version>
 </dependency>
 ```
 
 或 gradle
 
 ```
-implementation 'com.tianyisoft.database:querybuilder:2.0.2'
+implementation 'com.tianyisoft.database:querybuilder:2.0.3'
 ```
 
 ### 使用说明
