@@ -318,7 +318,8 @@ open class Builder: Cloneable {
         return this
     }
 
-    open fun orWhereColumn(first: String, operator: String, second: String) = whereColumn(first, operator, second, "or")
+    @JvmOverloads
+    open fun orWhereColumn(first: Any, operator: String? = null, second: String? = null) = whereColumn(first, operator, second, "or")
 
     @JvmOverloads
     open fun whereNull(column: String, boolean: String = "and", not: Boolean = false): Builder {
@@ -375,9 +376,9 @@ open class Builder: Cloneable {
     }
 
     @JvmOverloads
-    open fun whereNotIn(column: String, values: List<Any?>, boolean: String = "and") = whereIn(column, values, boolean, true)
-    open fun orWhereIn(column: String, values: List<Any?>) = whereIn(column, values, "or")
-    open fun orWhereNotIn(column: String, values: List<Any?>) = whereNotIn(column, values, "or")
+    open fun whereNotIn(column: String, values: Any, boolean: String = "and") = whereIn(column, values, boolean, true)
+    open fun orWhereIn(column: String, values: Any) = whereIn(column, values, "or")
+    open fun orWhereNotIn(column: String, values: Any) = whereNotIn(column, values, "or")
 
     @JvmOverloads
     open fun whereBetween(column: String, values: List<Any?>, boolean: String = "and", not: Boolean = false): Builder {
@@ -408,6 +409,11 @@ open class Builder: Cloneable {
         ))
         return this
     }
+
+    @JvmOverloads
+    open fun whereNotBetweenColumns(column: String, values: List<String>, boolean: String = "and") = whereBetweenColumns(column, values, boolean, true)
+    open fun orWhereBetweenColumns(column: String, values: List<String>) = whereBetweenColumns(column, values, "or")
+    open fun orWhereNotBetweenColumns(column: String, values: List<String>) = whereNotBetweenColumns(column, values, "or")
 
     @JvmOverloads
     open fun whereDate(column: String, operator: Any?, value: Any? = null, boolean: String = "and"): Builder {
@@ -1565,7 +1571,7 @@ open class Builder: Cloneable {
             is Map<*, *> -> listOf(data as Map<String, Any?>)
             is List<*> -> run {
                 if (data.size == 0) {
-                    throw InvalidArgumentException("list must at least one element")
+                    throw InvalidArgumentException("list must contain at least one element")
                 }
                 if (data[0] is Map<*, *>) {
                     data as List<Map<String, Any?>>
