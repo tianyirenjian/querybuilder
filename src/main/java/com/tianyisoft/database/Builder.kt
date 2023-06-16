@@ -281,12 +281,42 @@ open class Builder: Cloneable {
     protected open fun isNotEqualsOperator(operator: Any?) = operator !in listOf("=", "!=", "<>")
 
     @JvmOverloads
-    open fun whereEquals(column: Any, value: Any?, boolean: String = "and") = where(column, "=", value, boolean)
-
-    @JvmOverloads
     open fun orWhere(column: Any, operator: String? = null, value: Any? = null) = where(column, operator, value, "or")
 
+    @JvmOverloads
+    open fun whereEquals(column: Any, value: Any?, boolean: String = "and") = where(column, "=", value, boolean)
+
     open fun orWhereEquals(column: Any, value: Any?) = whereEquals(column, value, "or")
+
+    @JvmOverloads
+    open fun whereNotEquals(column: Any, value: Any?, boolean: String = "and") = where(column, "!=", value, boolean)
+
+    open fun orWhereNotEquals(column: Any, value: Any?) = whereNotEquals(column, value, "or")
+
+    @JvmOverloads
+    open fun whereGt(column: Any, value: Any?, boolean: String = "and") = where(column, ">", value, boolean)
+
+    open fun orWhereGt(column: Any, value: Any?) = whereGt(column, value, "or")
+
+    @JvmOverloads
+    open fun whereGte(column: Any, value: Any?, boolean: String = "and") = where(column, ">=", value, boolean)
+
+    open fun orWhereGte(column: Any, value: Any?) = whereGte(column, value, "or")
+
+    @JvmOverloads
+    open fun whereLt(column: Any, value: Any?, boolean: String = "and") = where(column, "<", value, boolean)
+
+    open fun orWhereLt(column: Any, value: Any?) = whereLt(column, value, "or")
+
+    @JvmOverloads
+    open fun whereLte(column: Any, value: Any?, boolean: String = "and") = where(column, "<=", value, boolean)
+
+    open fun orWhereLte(column: Any, value: Any?) = whereLte(column, value, "or")
+
+    @JvmOverloads
+    open fun whereLike(column: Any, value: Any?, boolean: String = "and") = where(column, "like", value, boolean)
+
+    open fun orWhereLike(column: Any, value: Any?) = whereLike(column, value, "or")
 
     @JvmOverloads
     open fun whereNot(column: Any, operator: String? = null, value: Any? = null, boolean: String = "and"): Builder {
