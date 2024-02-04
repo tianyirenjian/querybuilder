@@ -715,7 +715,7 @@ val users = builder.table("users")
 val deleted = false // 我这时定义死了
 
 val users = builder.table("users")
-    .whereTrue(deleted, {
+    .whenTrue(deleted, {
         it.whereNotNull("deleted")
     }, {
         it.whereNull("deleted") // 会执行这一条，就像 if/else 一样
